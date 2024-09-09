@@ -22,17 +22,19 @@ enum {
     DISPLAY_HEIGHT = 128U,  ///< Number of pixels in height
     RESET_DELAY_MS = 150U,  ///< Number of milliseconds to wait after reset
     SPI_TIMEOUT_MS = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
+    BUFFER_SIZE    = 32U,   ///< Size of the frame buffer in bytes
 };
 
 /**
  * @brief Enumeration of the function IDs of the SSD1306
  */
 typedef enum {
-    INIT = 0,   ///< st7735sInitialise()
-    SEND_CMD,   ///< sendCommand()
-    RESETTING,  ///< stateResetting()
-    WAKING,     ///< stateExitingSleep()
-    CONFIG,     ///< stateConfiguring()
+    INIT = 0,         ///< st7735sInitialise()
+    SEND_CMD,         ///< sendCommand()
+    RESETTING,        ///< stateResetting()
+    WAKING,           ///< stateExitingSleep()
+    CONFIG,           ///< stateConfiguring()
+    WAITING_DMA_RDY,  ///< stateWaitingForTXdone()
 } SSD1306functionCodes_e;
 
 /**
@@ -60,7 +62,9 @@ static errorCode_u stateConfiguring(void);
 static errorCode_u stateWaitingForReset(void);
 static errorCode_u stateExitingSleep(void);
 static errorCode_u stateWaitingForSleepOut(void);
+static errorCode_u stateSendingTestPixels(void);
 static errorCode_u stateIdle(void);
+static errorCode_u stateWaitingForTXdone(void);
 static errorCode_u stateError(void);
 
 //State variables
@@ -68,7 +72,7 @@ static SPI_TypeDef* spiHandle      = (void*)0;        ///< SPI handle used with 
 static DMA_TypeDef* dmaHandle      = (void*)0;        ///< DMA handle used with the SSD1306
 static uint32_t     dmaChannelUsed = 0x00000000U;     ///< DMA channel used
 static screenState  state          = stateResetting;  ///< State machine current state
-static uint8_t      displayBuffer;                    ///< Buffer used to send data to the display
+static uint16_t     displayBuffer[BUFFER_SIZE];       ///< Buffer used to send data to the display
 static systick_t    previousTick_ms = 0;              ///< Latest system tick value saved (in ms)
 static errorCode_u  result;                           ///< Buffer used to store function return codes
 
@@ -274,6 +278,46 @@ static errorCode_u stateConfiguring(void) {
         }
     }
 
+    previousTick_ms = getSystick();
+    state           = stateSendingTestPixels;
+    return (ERR_SUCCESS);
+}
+
+/**
+ * @brief State in which the screen waits for instructions
+ * 
+ * @return Success
+ */
+static errorCode_u stateSendingTestPixels(void) {
+    const uint16_t RED      = 0xF800U;
+    uint16_t*      iterator = displayBuffer;
+
+    if(!isTimeElapsed(previousTick_ms, RESET_DELAY_MS)) {
+        return ERR_SUCCESS;
+    }
+
+    for(uint8_t pixel = 0; pixel < (uint8_t)BUFFER_SIZE; pixel++) {
+        *(iterator++) = RED;
+    }
+
+    //set data GPIO and enable SPI
+    setDataCommandGPIO(DATA);
+    LL_SPI_Enable(spiHandle);
+
+    //configure the DMA transaction
+    LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
+    LL_DMA_ClearFlag_GI5(dmaHandle);
+    LL_DMA_SetDataLength(dmaHandle, dmaChannelUsed, BUFFER_SIZE);  //must be reset every time
+    LL_DMA_EnableChannel(dmaHandle, dmaChannelUsed);
+
+    //send the data
+    previousTick_ms = getSystick();
+    LL_SPI_EnableDMAReq_TX(spiHandle);
+
+    //get to next
+    state = stateWaitingForTXdone;
+    return (ERR_SUCCESS);
+
     state = stateIdle;
     return (ERR_SUCCESS);
 }
@@ -285,6 +329,38 @@ static errorCode_u stateConfiguring(void) {
  */
 static errorCode_u stateIdle(void) {
     return (ERR_SUCCESS);
+}
+
+/**
+ * @brief State in which the machine waits for a DMA transmission to end
+ *
+ * @return Success
+ * @retval 1	Timeout while waiting for transmission to end
+ * @retval 2	Error interrupt occurred during the DMA transfer
+ */
+static errorCode_u stateWaitingForTXdone(void) {
+    //if timer elapsed, stop DMA and error
+    if(isTimeElapsed(previousTick_ms, SPI_TIMEOUT_MS)) {
+        result = createErrorCode(WAITING_DMA_RDY, 1, ERR_ERROR);
+        goto finalise;
+    }
+
+    //if DMA error, error
+    if(LL_DMA_IsActiveFlag_TE5(dmaHandle)) {
+        result = createErrorCode(WAITING_DMA_RDY, 2, ERR_ERROR);
+        goto finalise;
+    }
+
+    //if transmission not complete yet, exit
+    if(!LL_DMA_IsActiveFlag_TC5(dmaHandle)) {
+        return (ERR_SUCCESS);
+    }
+
+finalise:
+    LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
+    LL_SPI_Disable(spiHandle);
+    state = stateIdle;
+    return result;
 }
 
 /**
