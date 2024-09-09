@@ -4,7 +4,7 @@
 #include "ST7735_registers.h"
 
 enum {
-    ST7735_NB_COMMANDS    = 2U,   ///< Number of commands to send during initialisation
+    ST7735_NB_COMMANDS    = 15U,  ///< Number of commands to send during initialisation
     ST7735_STRUCT_PADDING = 16U,  ///< Configuration command structure memory alignment size
 };
 

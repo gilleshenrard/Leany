@@ -4,7 +4,7 @@
  * @author Gilles Henrard
  * @date 09/09/2024
  *
- * @note Datasheet : https://www.displayfuture.com/Display/datasheet/controller/ST7735.pdf
+ * @note Datasheet : https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
  */
 #include "ST7735S.h"
 #include <stdint.h>
