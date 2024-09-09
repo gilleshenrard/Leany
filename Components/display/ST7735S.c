@@ -317,9 +317,6 @@ static errorCode_u stateSendingTestPixels(void) {
     //get to next
     state = stateWaitingForTXdone;
     return (ERR_SUCCESS);
-
-    state = stateIdle;
-    return (ERR_SUCCESS);
 }
 
 /**
