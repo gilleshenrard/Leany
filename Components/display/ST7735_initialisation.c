@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include "ST7735_registers.h"
 
-#define NULL (void*)0  ///< NULL address
-
 /**
  * @brief Arguments sent when configuring the frame rate
  */
@@ -95,8 +93,6 @@ static const uint8_t gammaControlNegative_args[16] = {0x03, 0x1d, 0x07, 0x06, 0x
  * @brief Configuration commands list
  */
 const st7735_command_t st7735configurationScript[ST7735_NB_COMMANDS] = {
-    { SWRESET,  0,                         NULL}, //software reset
-    {  SLPOUT,  0,                         NULL}, //sleep out
     { FRMCTR1,  3,        framerateControl_args}, //set frame rate in normal mode
     { FRMCTR2,  3,        framerateControl_args}, //set frame rate in idle mode
     { FRMCTR3,  3, framerateControlPartial_args}, //set frame rate in partial mode

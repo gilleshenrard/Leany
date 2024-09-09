@@ -3,8 +3,10 @@
 #include <stdint.h>
 #include "ST7735_registers.h"
 
+#define NULL (void*)0  ///< NULL address
+
 enum {
-    ST7735_NB_COMMANDS    = 19U,  ///< Number of commands to send during initialisation
+    ST7735_NB_COMMANDS    = 17U,  ///< Number of commands to send during initialisation
     ST7735_STRUCT_PADDING = 16U,  ///< Configuration command structure memory alignment size
 };
 
@@ -16,5 +18,7 @@ typedef struct {
     uint8_t          nbParameters;    ///< Number of parameters sent after the register number
     const uint8_t*   parameters;      ///< Array of parameters
 } __attribute__((aligned(ST7735_STRUCT_PADDING))) st7735_command_t;
+
+extern const st7735_command_t st7735configurationScript[ST7735_NB_COMMANDS];
 
 #endif
