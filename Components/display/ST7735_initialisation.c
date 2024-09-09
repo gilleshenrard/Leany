@@ -46,23 +46,33 @@ static const uint8_t madCtrl_arg = COL_ROW_ADDRESS | REFRESH_TOP_BOTTOM | REFRES
 
 static const uint8_t colorMode_arg = COLOUR_16BITS;
 
+static const uint8_t gammaControlPositive_args[16] = {0x02, 0x1c, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2d,
+                                                      0x29, 0x25, 0x2B, 0x39, 0x00, 0x01, 0x03, 0x10};
+
+static const uint8_t gammaControlNegative_args[16] = {0x03, 0x1d, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D,
+                                                      0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10};
+
 /**
  * @brief Configuration commands list
  */
 const st7735_command_t st7735configurationScript[ST7735_NB_COMMANDS] = {
-    {SWRESET, 0,                         NULL}, //software reset
-    { SLPOUT, 0,                         NULL}, //sleep out
-    {FRMCTR1, 3,        framerateControl_args}, //set frame rate in normal mode
-    {FRMCTR2, 3,        framerateControl_args}, //set frame rate in idle mode
-    {FRMCTR3, 3, framerateControlPartial_args}, //set frame rate in partial mode
-    { INVCTR, 1,        &inversionControl_arg}, //disable inversion
-    { PWCTR1, 3,           powerControl1_args}, //set power control 1
-    { PWCTR2, 1,           &powerControl2_arg}, //set power control 2
-    { PWCTR3, 2,           powerControl3_args}, //set power control 3 in normal mode
-    { PWCTR4, 2,           powerControl4_args}, //set power control 4 in idle mode
-    { PWCTR5, 2,           powerControl5_args}, //set power control 5 in partial mode
-    { VMCTR1, 1,                  &vmCtr1_arg}, //set VCOM voltage
-    { INVOFF, 0,                         NULL}, //no display inversion
-    { MADCTL, 1,                 &madCtrl_arg}, //address control
-    { COLMOD, 1,               &colorMode_arg}, //color mode
+    { SWRESET,  0,                         NULL}, //software reset
+    {  SLPOUT,  0,                         NULL}, //sleep out
+    { FRMCTR1,  3,        framerateControl_args}, //set frame rate in normal mode
+    { FRMCTR2,  3,        framerateControl_args}, //set frame rate in idle mode
+    { FRMCTR3,  3, framerateControlPartial_args}, //set frame rate in partial mode
+    {  INVCTR,  1,        &inversionControl_arg}, //disable inversion
+    {  PWCTR1,  3,           powerControl1_args}, //set power control 1
+    {  PWCTR2,  1,           &powerControl2_arg}, //set power control 2
+    {  PWCTR3,  2,           powerControl3_args}, //set power control 3 in normal mode
+    {  PWCTR4,  2,           powerControl4_args}, //set power control 4 in idle mode
+    {  PWCTR5,  2,           powerControl5_args}, //set power control 5 in partial mode
+    {  VMCTR1,  1,                  &vmCtr1_arg}, //set VCOM voltage
+    {  INVOFF,  0,                         NULL}, //no display inversion
+    {  MADCTL,  1,                 &madCtrl_arg}, //address control
+    {  COLMOD,  1,               &colorMode_arg}, //color mode
+    {GAMCTRP1, 16,    gammaControlPositive_args}, //Gamma adjustments (positive polarity)
+    {GAMCTRN1, 16,    gammaControlNegative_args}, //Gamma adjustments (negative polarity)
+    {   NORON,  0,                         NULL}, //normal mode ON
+    {  DISPON,  0,                         NULL}, //display ON
 };
