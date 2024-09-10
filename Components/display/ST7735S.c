@@ -18,11 +18,12 @@
 #include "systick.h"
 
 enum {
-    DISPLAY_WIDTH  = 160U,  ///< Number of pixels in width
-    DISPLAY_HEIGHT = 128U,  ///< Number of pixels in height
-    RESET_DELAY_MS = 150U,  ///< Number of milliseconds to wait after reset
-    SPI_TIMEOUT_MS = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
-    BUFFER_SIZE    = 32U,   ///< Size of the frame buffer in bytes
+    DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
+    DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
+    RESET_DELAY_MS    = 150U,  ///< Number of milliseconds to wait after reset
+    SLEEPOUT_DELAY_MS = 255U,  ///< Number of milliseconds to wait sleep out
+    SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
+    BUFFER_SIZE       = 32U,   ///< Size of the frame buffer in bytes
 };
 
 /**
@@ -254,7 +255,7 @@ static errorCode_u stateExitingSleep(void) {
  * @return Success
  */
 static errorCode_u stateWaitingForSleepOut(void) {
-    if(isTimeElapsed(previousTick_ms, RESET_DELAY_MS)) {
+    if(isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
         state = stateConfiguring;
     }
 
