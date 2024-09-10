@@ -23,7 +23,7 @@ enum {
     RESET_DELAY_MS    = 150U,  ///< Number of milliseconds to wait after reset
     SLEEPOUT_DELAY_MS = 255U,  ///< Number of milliseconds to wait sleep out
     SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
-    BUFFER_SIZE       = 32U,   ///< Size of the frame buffer in bytes
+    BUFFER_SIZE       = 900U,  ///< Size of the frame buffer in bytes
 };
 
 /**
@@ -53,6 +53,8 @@ typedef enum {
  */
 typedef errorCode_u (*screenState)(void);
 
+typedef uint16_t pixel_t;
+
 //utility functions
 static inline void setDataCommandGPIO(DCgpio_e function);
 static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
@@ -73,7 +75,7 @@ static SPI_TypeDef* spiHandle      = (void*)0;        ///< SPI handle used with 
 static DMA_TypeDef* dmaHandle      = (void*)0;        ///< DMA handle used with the SSD1306
 static uint32_t     dmaChannelUsed = 0x00000000U;     ///< DMA channel used
 static screenState  state          = stateResetting;  ///< State machine current state
-static uint16_t     displayBuffer[BUFFER_SIZE];       ///< Buffer used to send data to the display
+static pixel_t      displayBuffer[BUFFER_SIZE];       ///< Buffer used to send data to the display
 static systick_t    previousTick_ms = 0;              ///< Latest system tick value saved (in ms)
 static errorCode_u  result;                           ///< Buffer used to store function return codes
 
@@ -290,20 +292,33 @@ static errorCode_u stateConfiguring(void) {
  * @return Success
  */
 static errorCode_u stateSendingTestPixels(void) {
-    const uint16_t RED      = 0xF800U;
-    uint16_t*      iterator = displayBuffer;
+    const pixel_t RED      = 0xF800U;
+    pixel_t*      iterator = displayBuffer;
 
-    if(!isTimeElapsed(previousTick_ms, RESET_DELAY_MS)) {
+    if(!isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
         return ERR_SUCCESS;
     }
 
-    for(uint8_t pixel = 0; pixel < (uint8_t)BUFFER_SIZE; pixel++) {
+    for(size_t pixel = 0; pixel < (size_t)BUFFER_SIZE; pixel++) {
         *(iterator++) = RED;
     }
 
+    static const uint8_t columns[4] = {0, 10U, 0, 39U};
+    static const uint8_t rows[4]    = {0, 10U, 0, 39U};
+    sendCommand(CASET, columns, 4);
+    sendCommand(RASET, rows, 4);
+
+    //set command pin and enable SPI
+    systick_t tickAtStart_ms = getSystick();
+    setDataCommandGPIO(COMMAND);
+    LL_SPI_Enable(spiHandle);
+
+    //send the command byte and wait for the transaction to be done
+    LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
+    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
+
     //set data GPIO and enable SPI
     setDataCommandGPIO(DATA);
-    LL_SPI_Enable(spiHandle);
 
     //configure the DMA transaction
     LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
