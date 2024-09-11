@@ -54,6 +54,9 @@ typedef enum {
  */
 typedef errorCode_u (*screenState)(void);
 
+/**
+ * @brief Pixel type definition
+ */
 typedef uint16_t pixel_t;
 
 //utility functions
@@ -72,16 +75,16 @@ static errorCode_u stateWaitingForTXdone(void);
 static errorCode_u stateError(void);
 
 //State variables
-static SPI_TypeDef*  spiHandle      = (void*)0;        ///< SPI handle used with the SSD1306
-static DMA_TypeDef*  dmaHandle      = (void*)0;        ///< DMA handle used with the SSD1306
-static uint32_t      dmaChannelUsed = 0x00000000U;     ///< DMA channel used
-static screenState   state          = stateResetting;  ///< State machine current state
-static pixel_t       displayBuffer[BUFFER_SIZE];       ///< Buffer used to send data to the display
-static systick_t     previousTick_ms = 0;              ///< Latest system tick value saved (in ms)
-static errorCode_u   result;                           ///< Buffer used to store function return codes
-static uint16_t      displayHeight      = 0;
-static uint16_t      displayWidth       = 0;
-static orientation_e currentOrientation = NB_ORIENTATION;
+static SPI_TypeDef*  spiHandle      = (void*)0;            ///< SPI handle used with the SSD1306
+static DMA_TypeDef*  dmaHandle      = (void*)0;            ///< DMA handle used with the SSD1306
+static uint32_t      dmaChannelUsed = 0x00000000U;         ///< DMA channel used
+static screenState   state          = stateResetting;      ///< State machine current state
+static pixel_t       displayBuffer[BUFFER_SIZE];           ///< Buffer used to send data to the display
+static systick_t     previousTick_ms = 0;                  ///< Latest system tick value saved (in ms)
+static errorCode_u   result;                               ///< Buffer used to store function return codes
+static uint16_t      displayHeight      = 0;               ///< Current height of the display (depending on orientation)
+static uint16_t      displayWidth       = 0;               ///< Current width of the display (depending on orientation)
+static orientation_e currentOrientation = NB_ORIENTATION;  ///< Current display orientation
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
