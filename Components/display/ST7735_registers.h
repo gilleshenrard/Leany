@@ -34,10 +34,14 @@
 #define VCOM_NEG_0_775V 0x0EU  ///< VCOM voltage = -0.775V
 
 // Address control (register 0x36) values
-#define COL_ROW_ADDRESS    0xC0U  ///< row/column address
-#define REFRESH_TOP_BOTTOM 0x08U  ///< refresh top to bottom
-#define REFRESH_LEFT_RIGHT 0x00U  ///< refresh left to right
-#define COLORS_ORDER_RGB   0x00U  ///< RGB instead of BGR
+#define COL_ROW_ADDRESS      0xC0U  ///< row/column address
+#define REFRESH_TOP_BOTTOM   0x08U  ///< refresh top to bottom
+#define REFRESH_LEFT_RIGHT   0x00U  ///< refresh left to right
+#define COLORS_ORDER_RGB     0x00U  ///< RGB instead of BGR
+#define ORIENT_PORTRAIT      0x00U  ///< MV, MX and MY values for portrait orientation
+#define ORIENT_PORTRAIT_180  0xC0U  ///< MV, MX and MY values for portrait orientation (180°)
+#define ORIENT_LANDSCAPE     0x60U  ///< MV, MX and MY values for landscape orientation
+#define ORIENT_LANDSCAPE_180 0xA0U  ///< MV, MX and MY values for landscape orientation (180°)
 
 //  Colour mode (register 0x3A) values
 #define COLOUR_16BITS 0x05U  ///< 16 bits colours
