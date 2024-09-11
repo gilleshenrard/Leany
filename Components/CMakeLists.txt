@@ -73,6 +73,7 @@ target_link_libraries(lsm6dso PRIVATE sysUtils)
 #create the ssd1306 library, taking care of the display
 add_library(st7735s
 	display/ST7735S.c
+	display/icons.c
 	display/ST7735_initialisation.c)
 target_include_directories(st7735s PUBLIC display)
 target_link_libraries(st7735s PRIVATE sysUtils)

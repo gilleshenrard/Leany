@@ -11,6 +11,7 @@
 #include "ST7735_initialisation.h"
 #include "ST7735_registers.h"
 #include "errorstack.h"
+#include "icons.h"
 #include "main.h"
 #include "stm32f1xx_ll_dma.h"
 #include "stm32f1xx_ll_gpio.h"
@@ -18,12 +19,12 @@
 #include "systick.h"
 
 enum {
-    DISPLAY_WIDTH     = 160U,   ///< Number of pixels in width
-    DISPLAY_HEIGHT    = 128U,   ///< Number of pixels in height
-    RESET_DELAY_MS    = 150U,   ///< Number of milliseconds to wait after reset
-    SLEEPOUT_DELAY_MS = 255U,   ///< Number of milliseconds to wait sleep out
-    SPI_TIMEOUT_MS    = 10U,    ///< Number of milliseconds beyond which SPI is in timeout
-    BUFFER_SIZE       = 1800U,  ///< Size of the frame buffer in bytes
+    DISPLAY_WIDTH     = 160U,                                ///< Number of pixels in width
+    DISPLAY_HEIGHT    = 128U,                                ///< Number of pixels in height
+    RESET_DELAY_MS    = 150U,                                ///< Number of milliseconds to wait after reset
+    SLEEPOUT_DELAY_MS = 255U,                                ///< Number of milliseconds to wait sleep out
+    SPI_TIMEOUT_MS    = 10U,                                 ///< Number of milliseconds beyond which SPI is in timeout
+    BUFFER_SIZE       = ((uint8_t)TEST_PATTERN_SIZE << 3U),  ///< Size of the frame buffer in bytes
 };
 
 /**
@@ -353,21 +354,30 @@ static errorCode_u stateConfiguring(void) {
  * @return Success
  */
 static errorCode_u stateSendingTestPixels(void) {
-    const uint8_t BITE_DOWNSHIFT = 8U;
-    const uint8_t BITE_MASK      = 0xFFU;
-    const pixel_t RED            = 0xF800U;
-    uint8_t*      iterator       = displayBuffer;
+    const uint32_t MSB_MASK_32    = 0x80000000U;
+    const uint8_t  BITE_DOWNSHIFT = 8U;
+    const uint8_t  BITE_MASK      = 0xFFU;
+    const pixel_t  RED            = 0xF800U;
+    const pixel_t  WHITE          = 0xFFFFU;
+    uint8_t*       iterator       = displayBuffer;
+
+    for(size_t line = 0; line < TEST_PATTERN_SIZE; line++) {
+        for(uint32_t mask = MSB_MASK_32; mask > 0; mask >>= 1U) {
+            if(testPattern[line] & mask) {
+                *(iterator++) = (registerValue_t)(WHITE >> BITE_DOWNSHIFT);
+                *(iterator++) = (registerValue_t)(WHITE & BITE_MASK);
+            } else {
+                *(iterator++) = (registerValue_t)(RED >> BITE_DOWNSHIFT);
+                *(iterator++) = (registerValue_t)(RED & BITE_MASK);
+            }
+        }
+    }
 
     //turn on backlight
     turnBacklightON();
 
-    for(size_t pixel = 0; pixel < (size_t)BUFFER_SIZE; pixel++) {
-        *(iterator++) = (registerValue_t)(RED >> BITE_DOWNSHIFT);
-        *(iterator++) = (registerValue_t)(RED & BITE_MASK);
-    }
-
-    static const uint8_t columns[4] = {0, 10U, 0, 39U};
-    static const uint8_t rows[4]    = {0, 10U, 0, 39U};
+    static const uint8_t columns[4] = {0, 11U, 0, 42U};
+    static const uint8_t rows[4]    = {0, 11U, 0, 42U};
     sendCommand(CASET, columns, 4);
     sendCommand(RASET, rows, 4);
 
