@@ -18,12 +18,12 @@
 #include "systick.h"
 
 enum {
-    DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
-    DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
-    RESET_DELAY_MS    = 150U,  ///< Number of milliseconds to wait after reset
-    SLEEPOUT_DELAY_MS = 255U,  ///< Number of milliseconds to wait sleep out
-    SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
-    BUFFER_SIZE       = 900U,  ///< Size of the frame buffer in bytes
+    DISPLAY_WIDTH     = 160U,   ///< Number of pixels in width
+    DISPLAY_HEIGHT    = 128U,   ///< Number of pixels in height
+    RESET_DELAY_MS    = 150U,   ///< Number of milliseconds to wait after reset
+    SLEEPOUT_DELAY_MS = 255U,   ///< Number of milliseconds to wait sleep out
+    SPI_TIMEOUT_MS    = 10U,    ///< Number of milliseconds beyond which SPI is in timeout
+    BUFFER_SIZE       = 1800U,  ///< Size of the frame buffer in bytes
 };
 
 /**
@@ -75,16 +75,16 @@ static errorCode_u stateWaitingForTXdone(void);
 static errorCode_u stateError(void);
 
 //State variables
-static SPI_TypeDef*  spiHandle      = (void*)0;            ///< SPI handle used with the SSD1306
-static DMA_TypeDef*  dmaHandle      = (void*)0;            ///< DMA handle used with the SSD1306
-static uint32_t      dmaChannelUsed = 0x00000000U;         ///< DMA channel used
-static screenState   state          = stateResetting;      ///< State machine current state
-static pixel_t       displayBuffer[BUFFER_SIZE];           ///< Buffer used to send data to the display
-static systick_t     previousTick_ms = 0;                  ///< Latest system tick value saved (in ms)
-static errorCode_u   result;                               ///< Buffer used to store function return codes
-static uint16_t      displayHeight      = 0;               ///< Current height of the display (depending on orientation)
-static uint16_t      displayWidth       = 0;               ///< Current width of the display (depending on orientation)
-static orientation_e currentOrientation = NB_ORIENTATION;  ///< Current display orientation
+static SPI_TypeDef*    spiHandle      = (void*)0;        ///< SPI handle used with the SSD1306
+static DMA_TypeDef*    dmaHandle      = (void*)0;        ///< DMA handle used with the SSD1306
+static uint32_t        dmaChannelUsed = 0x00000000U;     ///< DMA channel used
+static screenState     state          = stateResetting;  ///< State machine current state
+static registerValue_t displayBuffer[BUFFER_SIZE];       ///< Buffer used to send data to the display
+static systick_t       previousTick_ms = 0;              ///< Latest system tick value saved (in ms)
+static errorCode_u     result;                           ///< Buffer used to store function return codes
+static uint16_t        displayHeight      = 0;           ///< Current height of the display (depending on orientation)
+static uint16_t        displayWidth       = 0;           ///< Current width of the display (depending on orientation)
+static orientation_e   currentOrientation = NB_ORIENTATION;  ///< Current display orientation
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
@@ -353,14 +353,17 @@ static errorCode_u stateConfiguring(void) {
  * @return Success
  */
 static errorCode_u stateSendingTestPixels(void) {
-    const pixel_t RED      = 0xF800U;
-    pixel_t*      iterator = displayBuffer;
+    const uint8_t BITE_DOWNSHIFT = 8U;
+    const uint8_t BITE_MASK      = 0xFFU;
+    const pixel_t RED            = 0xF800U;
+    uint8_t*      iterator       = displayBuffer;
 
     //turn on backlight
     turnBacklightON();
 
     for(size_t pixel = 0; pixel < (size_t)BUFFER_SIZE; pixel++) {
-        *(iterator++) = RED;
+        *(iterator++) = (registerValue_t)(RED >> BITE_DOWNSHIFT);
+        *(iterator++) = (registerValue_t)(RED & BITE_MASK);
     }
 
     static const uint8_t columns[4] = {0, 10U, 0, 39U};
