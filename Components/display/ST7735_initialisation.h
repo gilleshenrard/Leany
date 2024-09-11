@@ -6,7 +6,7 @@
 #define NULL (void*)0  ///< NULL address
 
 enum {
-    ST7735_NB_COMMANDS    = 17U,  ///< Number of commands to send during initialisation
+    ST7735_NB_COMMANDS    = 16U,  ///< Number of commands to send during initialisation
     ST7735_STRUCT_PADDING = 16U,  ///< Configuration command structure memory alignment size
 };
 

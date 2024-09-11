@@ -106,7 +106,6 @@ const st7735_command_t st7735configurationScript[ST7735_NB_COMMANDS] = {
     {  PWCTR5,  2,           powerControl5_args}, //set power control 5 in partial mode
     {  VMCTR1,  1,                  &vmCtr1_arg}, //set VCOM voltage
     {  INVOFF,  0,                         NULL}, //no display inversion
-    {  MADCTL,  1, &orientations[LANDSCAPE_180]}, //address control
     {  COLMOD,  1,               &colorMode_arg}, //color mode
     {GAMCTRP1, 16,    gammaControlPositive_args}, //Gamma adjustments (positive polarity)
     {GAMCTRN1, 16,    gammaControlNegative_args}, //Gamma adjustments (negative polarity)

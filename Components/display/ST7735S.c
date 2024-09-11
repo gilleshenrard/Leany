@@ -32,6 +32,7 @@ enum {
 typedef enum {
     INIT = 0,         ///< st7735sInitialise()
     SEND_CMD,         ///< sendCommand()
+    ORIENT,           ///< st7735sSetOrientation()
     RESETTING,        ///< stateResetting()
     WAKING,           ///< stateExitingSleep()
     CONFIG,           ///< stateConfiguring()
@@ -71,13 +72,16 @@ static errorCode_u stateWaitingForTXdone(void);
 static errorCode_u stateError(void);
 
 //State variables
-static SPI_TypeDef* spiHandle      = (void*)0;        ///< SPI handle used with the SSD1306
-static DMA_TypeDef* dmaHandle      = (void*)0;        ///< DMA handle used with the SSD1306
-static uint32_t     dmaChannelUsed = 0x00000000U;     ///< DMA channel used
-static screenState  state          = stateResetting;  ///< State machine current state
-static pixel_t      displayBuffer[BUFFER_SIZE];       ///< Buffer used to send data to the display
-static systick_t    previousTick_ms = 0;              ///< Latest system tick value saved (in ms)
-static errorCode_u  result;                           ///< Buffer used to store function return codes
+static SPI_TypeDef*  spiHandle      = (void*)0;        ///< SPI handle used with the SSD1306
+static DMA_TypeDef*  dmaHandle      = (void*)0;        ///< DMA handle used with the SSD1306
+static uint32_t      dmaChannelUsed = 0x00000000U;     ///< DMA channel used
+static screenState   state          = stateResetting;  ///< State machine current state
+static pixel_t       displayBuffer[BUFFER_SIZE];       ///< Buffer used to send data to the display
+static systick_t     previousTick_ms = 0;              ///< Latest system tick value saved (in ms)
+static errorCode_u   result;                           ///< Buffer used to store function return codes
+static uint16_t      displayHeight      = 0;
+static uint16_t      displayWidth       = 0;
+static orientation_e currentOrientation = NB_ORIENTATION;
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
@@ -188,6 +192,54 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
 }
 
 /**
+ * @brief Set the display orientation
+ * 
+ * @param orientation New display orientation
+ * @return Success
+ * @retval 1 Invalid orientation code provided
+ * @retval 2 Error while sending the command to the screen
+ */
+errorCode_u st7735sSetOrientation(orientation_e orientation) {
+    //if orientation does not change, exit
+    if(currentOrientation == orientation) {
+        return (ERR_SUCCESS);
+    }
+
+    //if incorrect orientation, error
+    if(orientation >= NB_ORIENTATION) {
+        return createErrorCode(ORIENT, 1, ERR_CRITICAL);
+    }
+
+    //send the command to the display
+    result = sendCommand(MADCTL, &orientations[orientation], 1);
+    if(isError(result)) {
+        return pushErrorCode(result, ORIENT, 2);
+    }
+
+    //update the current orientation
+    currentOrientation = orientation;
+
+    //update the display dimensions
+    switch(orientation) {
+        case PORTRAIT:
+        case PORTRAIT_180:
+            displayHeight = DISPLAY_WIDTH;
+            displayWidth  = DISPLAY_HEIGHT;
+            break;
+
+        case LANDSCAPE:
+        case LANDSCAPE_180:
+        case NB_ORIENTATION:
+        default:
+            displayHeight = DISPLAY_HEIGHT;
+            displayWidth  = DISPLAY_WIDTH;
+            break;
+    }
+
+    return (ERR_SUCCESS);
+}
+
+/**
  * @brief Run the state machine
  *
  * @return Return code of the current state
@@ -269,6 +321,7 @@ static errorCode_u stateWaitingForSleepOut(void) {
  * 
  * @return Success
  * @retval 1 Error while sending a command
+ * @retval 2 Error while setting the screen orientation
  */
 static errorCode_u stateConfiguring(void) {
     for(uint8_t command = 0; command < (uint8_t)ST7735_NB_COMMANDS; command++) {
@@ -279,6 +332,12 @@ static errorCode_u stateConfiguring(void) {
             state = stateError;
             return pushErrorCode(result, CONFIG, 1);
         }
+    }
+
+    result = st7735sSetOrientation(LANDSCAPE_180);
+    if(isError(result)) {
+        state = stateError;
+        return pushErrorCode(result, CONFIG, 2);
     }
 
     previousTick_ms = getSystick();
