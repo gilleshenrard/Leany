@@ -68,9 +68,7 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
 //state machine
 static errorCode_u stateResetting(void);
 static errorCode_u stateConfiguring(void);
-static errorCode_u stateWaitingForReset(void);
 static errorCode_u stateExitingSleep(void);
-static errorCode_u stateWaitingForSleepOut(void);
 static errorCode_u stateSendingTestPixels(void);
 static errorCode_u stateIdle(void);
 static errorCode_u stateWaitingForTXdone(void);
@@ -286,20 +284,7 @@ static errorCode_u stateResetting(void) {
 
     //save the current systick and get to waiting state
     previousTick_ms = getSystick();
-    state           = stateWaitingForReset;
-    return (ERR_SUCCESS);
-}
-
-/**
- * @brief State in which the screen waits for a while after a software reset
- * 
- * @return Success
- */
-static errorCode_u stateWaitingForReset(void) {
-    if(isTimeElapsed(previousTick_ms, RESET_DELAY_MS)) {
-        state = stateExitingSleep;
-    }
-
+    state           = stateExitingSleep;
     return (ERR_SUCCESS);
 }
 
@@ -310,6 +295,11 @@ static errorCode_u stateWaitingForReset(void) {
  * @retval 1 Error while transmitting the command
  */
 static errorCode_u stateExitingSleep(void) {
+    //if reset timer not elapsed yet, exit
+    if(!isTimeElapsed(previousTick_ms, RESET_DELAY_MS)) {
+        return (ERR_SUCCESS);
+    }
+
     //send the reset command and, if error, exit
     result = sendCommand(SLPOUT, NULL, 0);
     if(isError(result)) {
@@ -318,20 +308,7 @@ static errorCode_u stateExitingSleep(void) {
     }
 
     previousTick_ms = getSystick();
-    state           = stateWaitingForSleepOut;
-    return (ERR_SUCCESS);
-}
-
-/**
- * @brief State in which the screen waits for a while after a sleep out
- * 
- * @return Success
- */
-static errorCode_u stateWaitingForSleepOut(void) {
-    if(isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
-        state = stateConfiguring;
-    }
-
+    state           = stateConfiguring;
     return (ERR_SUCCESS);
 }
 
@@ -343,6 +320,12 @@ static errorCode_u stateWaitingForSleepOut(void) {
  * @retval 2 Error while setting the screen orientation
  */
 static errorCode_u stateConfiguring(void) {
+    //if sleep out timer not elapsed yet, exit
+    if(!isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
+        return (ERR_SUCCESS);
+    }
+
+    //execute all configuration commands
     for(uint8_t command = 0; command < (uint8_t)ST7735_NB_COMMANDS; command++) {
         result =
             sendCommand(st7735configurationScript[command].registerNumber,
@@ -353,14 +336,14 @@ static errorCode_u stateConfiguring(void) {
         }
     }
 
+    //set screen orientation
     result = st7735sSetOrientation(LANDSCAPE_180);
     if(isError(result)) {
         state = stateError;
         return pushErrorCode(result, CONFIG, 2);
     }
 
-    previousTick_ms = getSystick();
-    state           = stateSendingTestPixels;
+    state = stateSendingTestPixels;
     return (ERR_SUCCESS);
 }
 
@@ -372,10 +355,6 @@ static errorCode_u stateConfiguring(void) {
 static errorCode_u stateSendingTestPixels(void) {
     const pixel_t RED      = 0xF800U;
     pixel_t*      iterator = displayBuffer;
-
-    if(!isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
-        return ERR_SUCCESS;
-    }
 
     //turn on backlight
     turnBacklightON();
