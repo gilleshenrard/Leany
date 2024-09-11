@@ -24,7 +24,7 @@ enum {
     RESET_DELAY_MS    = 150U,                                ///< Number of milliseconds to wait after reset
     SLEEPOUT_DELAY_MS = 255U,                                ///< Number of milliseconds to wait sleep out
     SPI_TIMEOUT_MS    = 10U,                                 ///< Number of milliseconds beyond which SPI is in timeout
-    BUFFER_SIZE       = ((uint8_t)TEST_PATTERN_SIZE << 3U),  ///< Size of the frame buffer in bytes
+    BUFFER_SIZE       = ((uint8_t)TEST_PATTERN_SIZE << 6U),  ///< Size of the frame buffer in bytes
 };
 
 /**
