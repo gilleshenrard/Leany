@@ -2,7 +2,7 @@
  * @file ST7735S.c
  * @brief Implement the functioning of the ST7735S TFT screen via SPI and DMA
  * @author Gilles Henrard
- * @date 09/09/2024
+ * @date 11/09/2024
  *
  * @note Datasheet : https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
  */
@@ -61,6 +61,8 @@ typedef uint16_t pixel_t;
 
 //utility functions
 static inline void setDataCommandGPIO(DCgpio_e function);
+static inline void turnBacklightON(void);
+static inline void turnBacklightOFF(void);
 static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
 
 //state machine
@@ -243,6 +245,20 @@ errorCode_u st7735sSetOrientation(orientation_e orientation) {
 }
 
 /**
+ * @brief Turn the display TFT backlight ON
+ */
+static inline void turnBacklightON(void) {
+    LL_GPIO_SetOutputPin(ST7735S_BL_GPIO_Port, ST7735S_BL_Pin);
+}
+
+/**
+ * @brief Turn the display TFT backlight ON
+ */
+static inline void turnBacklightOFF(void) {
+    LL_GPIO_ResetOutputPin(ST7735S_BL_GPIO_Port, ST7735S_BL_Pin);
+}
+
+/**
  * @brief Run the state machine
  *
  * @return Return code of the current state
@@ -360,6 +376,9 @@ static errorCode_u stateSendingTestPixels(void) {
     if(!isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
         return ERR_SUCCESS;
     }
+
+    //turn on backlight
+    turnBacklightON();
 
     for(size_t pixel = 0; pixel < (size_t)BUFFER_SIZE; pixel++) {
         *(iterator++) = RED;
