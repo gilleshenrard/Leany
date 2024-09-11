@@ -67,10 +67,10 @@ static const registerValue_t vmCtr1_arg = VCOM_NEG_0_775V;
 
 // NOLINTBEGIN(misc-redundant-expression)
 const registerValue_t orientations[NB_ORIENTATION] = {
-    [PORTRAIT]      = COL_ROW_ADDRESS | REFRESH_TOP_BOTTOM | REFRESH_LEFT_RIGHT | ORIENT_PORTRAIT | COLORS_ORDER_RGB,
-    [PORTRAIT_180]  = 0x00U,
-    [LANDSCAPE]     = 0x00U,
-    [LANDSCAPE_180] = 0x00U,
+    [PORTRAIT]      = REFRESH_TOP_BOTTOM | REFRESH_LEFT_RIGHT | ORIENT_PORTRAIT | COLORS_ORDER_RGB,
+    [PORTRAIT_180]  = REFRESH_TOP_BOTTOM | REFRESH_LEFT_RIGHT | ORIENT_PORTRAIT_180 | COLORS_ORDER_RGB,
+    [LANDSCAPE]     = REFRESH_TOP_BOTTOM | REFRESH_LEFT_RIGHT | ORIENT_LANDSCAPE | COLORS_ORDER_RGB,
+    [LANDSCAPE_180] = REFRESH_TOP_BOTTOM | REFRESH_LEFT_RIGHT | ORIENT_LANDSCAPE_180 | COLORS_ORDER_RGB,
 };
 // NOLINTEND(misc-redundant-expression)
 
@@ -106,7 +106,7 @@ const st7735_command_t st7735configurationScript[ST7735_NB_COMMANDS] = {
     {  PWCTR5,  2,           powerControl5_args}, //set power control 5 in partial mode
     {  VMCTR1,  1,                  &vmCtr1_arg}, //set VCOM voltage
     {  INVOFF,  0,                         NULL}, //no display inversion
-    {  MADCTL,  1,      &orientations[PORTRAIT]}, //address control
+    {  MADCTL,  1, &orientations[LANDSCAPE_180]}, //address control
     {  COLMOD,  1,               &colorMode_arg}, //color mode
     {GAMCTRP1, 16,    gammaControlPositive_args}, //Gamma adjustments (positive polarity)
     {GAMCTRN1, 16,    gammaControlNegative_args}, //Gamma adjustments (negative polarity)
