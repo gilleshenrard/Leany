@@ -344,6 +344,9 @@ static errorCode_u stateConfiguring(void) {
         return pushErrorCode(result, CONFIG, 2);
     }
 
+    //turn on backlight
+    turnBacklightON();
+
     state = stateSendingTestPixels;
     return (ERR_SUCCESS);
 }
@@ -372,9 +375,6 @@ static errorCode_u stateSendingTestPixels(void) {
             }
         }
     }
-
-    //turn on backlight
-    turnBacklightON();
 
     static const uint8_t columns[4] = {0, 11U, 0, 42U};
     static const uint8_t rows[4]    = {0, 11U, 0, 42U};
