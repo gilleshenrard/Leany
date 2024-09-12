@@ -376,8 +376,8 @@ static errorCode_u stateSendingTestPixels(void) {
         }
     }
 
-    static const uint8_t columns[4] = {0, 11U, 0, 42U};
-    static const uint8_t rows[4]    = {0, 11U, 0, 42U};
+    const uint8_t columns[4] = {0, displayWidth - TEST_PATTERN_SIZE + 2, 0, displayWidth + 1};
+    const uint8_t rows[4]    = {0, displayHeight - TEST_PATTERN_SIZE + 2, 0, displayHeight + 2};
     sendCommand(CASET, columns, 4);
     sendCommand(RASET, rows, 4);
 
