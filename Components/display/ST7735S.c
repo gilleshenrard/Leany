@@ -11,7 +11,6 @@
 #include "ST7735_initialisation.h"
 #include "ST7735_registers.h"
 #include "errorstack.h"
-#include "icons.h"
 #include "main.h"
 #include "stm32f1xx_ll_dma.h"
 #include "stm32f1xx_ll_gpio.h"
@@ -38,6 +37,7 @@ enum {
 typedef enum {
     INIT = 0,         ///< st7735sInitialise()
     SEND_CMD,         ///< sendCommand()
+    FILL_BACKGROUND,  ///< printBackground()
     ORIENT,           ///< st7735sSetOrientation()
     RESETTING,        ///< stateResetting()
     WAKING,           ///< stateExitingSleep()
@@ -65,12 +65,13 @@ static inline void setDataCommandGPIO(DCgpio_e function);
 static inline void turnBacklightON(void);
 // static inline void turnBacklightOFF(void);
 static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
+static errorCode_u printBackground(void);
 
 //state machine
 static errorCode_u stateResetting(void);
 static errorCode_u stateConfiguring(void);
 static errorCode_u stateExitingSleep(void);
-static errorCode_u stateSendingTestPixels(void);
+static errorCode_u stateSendingData(void);
 static errorCode_u stateIdle(void);
 static errorCode_u stateWaitingForTXdone(void);
 static errorCode_u stateError(void);
@@ -86,6 +87,7 @@ static errorCode_u     result;                            ///< Buffer used to st
 static uint8_t         displayHeight      = 0;            ///< Current height of the display (depending on orientation)
 static uint8_t         displayWidth       = 0;            ///< Current width of the display (depending on orientation)
 static orientation_e   currentOrientation = NB_ORIENTATION;  ///< Current display orientation
+static uint32_t        dataTXRemaining    = 0;
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
@@ -258,6 +260,58 @@ static inline void turnBacklightON(void) {
 // }
 
 /**
+ * @brief Prepare to fill the screen with background colour pixels
+ * 
+ * @return Success
+ * @retval 1 Error while setting data window columns count
+ * @retval 2 Error while setting data window rows count
+ * @retval 3 Timeout while sending Write Data command
+ */
+static errorCode_u printBackground(void) {
+    const uint8_t BITE_DOWNSHIFT = 8U;
+    const uint8_t BITE_MASK      = 0xFFU;
+    const pixel_t CHARCOAL_GREY  = 0x31A6U;
+    uint8_t*      iterator       = displayBuffer;
+
+    //set the data window columns count
+    uint8_t columns[4] = {0, 0, 0, displayWidth};
+    result             = sendCommand(CASET, columns, 4);
+    if(isError(result)) {
+        return pushErrorCode(result, FILL_BACKGROUND, 1);
+    }
+
+    //set the data window rows count
+    uint8_t rows[4] = {0, 0, 0, displayHeight};
+    result          = sendCommand(RASET, rows, 4);
+    if(isError(result)) {
+        return pushErrorCode(result, FILL_BACKGROUND, 2);
+    }
+
+    //fill the frame buffer with background pixels
+    for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel++) {
+        *(iterator++) = (registerValue_t)(CHARCOAL_GREY >> BITE_DOWNSHIFT);
+        *(iterator++) = (registerValue_t)(CHARCOAL_GREY & BITE_MASK);
+    }
+
+    //set command pin and enable SPI
+    systick_t tickAtStart_ms = getSystick();
+    setDataCommandGPIO(COMMAND);
+    LL_SPI_Enable(spiHandle);
+
+    //send the command byte and wait for the transaction to be done
+    LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
+    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
+    if(isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {
+        return pushErrorCode(result, FILL_BACKGROUND, 3);
+    }
+
+    //get to sending data state
+    dataTXRemaining = DISPLAY_HEIGHT * DISPLAY_WIDTH * sizeof(pixel_t);
+    state           = stateSendingData;
+    return (ERR_SUCCESS);
+}
+
+/**
  * @brief Run the state machine
  *
  * @return Return code of the current state
@@ -321,11 +375,6 @@ static errorCode_u stateExitingSleep(void) {
  * @retval 2 Error while setting the screen orientation
  */
 static errorCode_u stateConfiguring(void) {
-    const uint8_t BITE_DOWNSHIFT = 8U;
-    const uint8_t BITE_MASK      = 0xFFU;
-    const pixel_t WHITE          = 0xFFFFU;
-    uint8_t*      iterator       = displayBuffer;
-
     //if sleep out timer not elapsed yet, exit
     if(!isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
         return (ERR_SUCCESS);
@@ -349,66 +398,32 @@ static errorCode_u stateConfiguring(void) {
         return pushErrorCode(result, CONFIG, 2);
     }
 
-    const uint8_t columns[4] = {0, 0, 0, displayWidth};
-    const uint8_t rows[4]    = {0, 0, 0, displayHeight};
-    sendCommand(CASET, columns, 4);
-    sendCommand(RASET, rows, 4);
-
-    for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel++) {
-        *(iterator++) = (registerValue_t)(WHITE >> BITE_DOWNSHIFT);
-        *(iterator++) = (registerValue_t)(WHITE & BITE_MASK);
-    }
-
-    //set command pin and enable SPI
-    systick_t tickAtStart_ms = getSystick();
-    setDataCommandGPIO(COMMAND);
-    LL_SPI_Enable(spiHandle);
-
-    //send the command byte and wait for the transaction to be done
-    LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
-    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
-
     //turn on backlight
     turnBacklightON();
 
-    state = stateSendingTestPixels;
+    //fill the screen with the background colour
+    printBackground();
+
+    state = stateSendingData;
     return (ERR_SUCCESS);
 }
 
 /**
- * @brief State in which the screen waits for instructions
+ * @brief State in which data is being sent to the display
  * 
  * @return Success
  */
-static errorCode_u stateSendingTestPixels(void) {
-    static uint8_t remaining = 5U;
-
-    if(!remaining) {
-        remaining = 5U;
+static errorCode_u stateSendingData(void) {
+    //if all data sent, close DMA and SPI and get to idle state
+    if(!dataTXRemaining) {
         LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
         LL_SPI_Disable(spiHandle);
         state = stateIdle;
         return (ERR_SUCCESS);
     }
 
-    //     const uint32_t MSB_MASK_32    = 0x80000000U;
-    //     const uint8_t  BITE_DOWNSHIFT = 8U;
-    //     const uint8_t  BITE_MASK      = 0xFFU;
-    //     const pixel_t  RED            = 0xF800U;
-    //     const pixel_t  WHITE          = 0xFFFFU;
-    //     uint8_t*       iterator       = displayBuffer;
-
-    // for(size_t line = 0; line < TEST_PATTERN_SIZE; line++) {
-    //     for(uint32_t mask = MSB_MASK_32; mask > 0; mask >>= 1U) {
-    //         if(testPattern[line] & mask) {
-    //             *(iterator++) = (registerValue_t)(WHITE >> BITE_DOWNSHIFT);
-    //             *(iterator++) = (registerValue_t)(WHITE & BITE_MASK);
-    //         } else {
-    //             *(iterator++) = (registerValue_t)(RED >> BITE_DOWNSHIFT);
-    //             *(iterator++) = (registerValue_t)(RED & BITE_MASK);
-    //         }
-    //     }
-    // }
+    //clamp the data to send to max. the frameBuffer
+    uint32_t dataToSend = (dataTXRemaining > FRAME_BUFFER_SIZE ? FRAME_BUFFER_SIZE : dataTXRemaining);
 
     //set data GPIO and enable SPI
     setDataCommandGPIO(DATA);
@@ -416,7 +431,7 @@ static errorCode_u stateSendingTestPixels(void) {
     //configure the DMA transaction
     LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
     LL_DMA_ClearFlag_GI5(dmaHandle);
-    LL_DMA_SetDataLength(dmaHandle, dmaChannelUsed, FRAME_BUFFER_SIZE);  //must be reset every time
+    LL_DMA_SetDataLength(dmaHandle, dmaChannelUsed, dataToSend);  //must be reset every time
     LL_DMA_EnableChannel(dmaHandle, dmaChannelUsed);
 
     //send the data
@@ -424,7 +439,7 @@ static errorCode_u stateSendingTestPixels(void) {
     LL_SPI_EnableDMAReq_TX(spiHandle);
 
     //get to next
-    remaining--;
+    dataTXRemaining -= dataToSend;
     state = stateWaitingForTXdone;
     return (ERR_SUCCESS);
 }
@@ -448,26 +463,26 @@ static errorCode_u stateIdle(void) {
 static errorCode_u stateWaitingForTXdone(void) {
     //if timer elapsed, stop DMA and error
     if(isTimeElapsed(previousTick_ms, SPI_TIMEOUT_MS)) {
-        result = createErrorCode(WAITING_DMA_RDY, 1, ERR_ERROR);
-        goto finalise;
+        LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
+        LL_SPI_Disable(spiHandle);
+        state = stateError;
+        return createErrorCode(WAITING_DMA_RDY, 1, ERR_ERROR);
     }
 
-    //if DMA error, error
+    //if DMA error, stop DMA and error
     if(LL_DMA_IsActiveFlag_TE5(dmaHandle)) {
-        result = createErrorCode(WAITING_DMA_RDY, 2, ERR_ERROR);
-        goto finalise;
+        LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
+        LL_SPI_Disable(spiHandle);
+        state = stateError;
+        return createErrorCode(WAITING_DMA_RDY, 2, ERR_ERROR);
     }
 
-    //if transmission not complete yet, exit
-    if(!LL_DMA_IsActiveFlag_TC5(dmaHandle)) {
-        return (ERR_SUCCESS);
+    //if transmission complete, get to sending data state
+    if(LL_DMA_IsActiveFlag_TC5(dmaHandle)) {
+        state = stateSendingData;
     }
 
-finalise:
-    // LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
-    // LL_SPI_Disable(spiHandle);
-    state = stateSendingTestPixels;
-    return result;
+    return (ERR_SUCCESS);
 }
 
 /**
