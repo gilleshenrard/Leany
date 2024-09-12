@@ -29,7 +29,7 @@ enum {
     RESET_DELAY_MS    = 150U,  ///< Number of milliseconds to wait after reset
     SLEEPOUT_DELAY_MS = 255U,  ///< Number of milliseconds to wait sleep out
     SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
-    BUFFER_SIZE       = (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 8U,  ///< Size of the frame buffer in bytes
+    FRAME_BUFFER_SIZE = (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 8U,  ///< Size of the frame buffer in bytes
 };
 
 /**
@@ -76,15 +76,15 @@ static errorCode_u stateWaitingForTXdone(void);
 static errorCode_u stateError(void);
 
 //State variables
-static SPI_TypeDef*    spiHandle      = (void*)0;        ///< SPI handle used with the SSD1306
-static DMA_TypeDef*    dmaHandle      = (void*)0;        ///< DMA handle used with the SSD1306
-static uint32_t        dmaChannelUsed = 0x00000000U;     ///< DMA channel used
-static screenState     state          = stateResetting;  ///< State machine current state
-static registerValue_t displayBuffer[BUFFER_SIZE];       ///< Buffer used to send data to the display
-static systick_t       previousTick_ms = 0;              ///< Latest system tick value saved (in ms)
-static errorCode_u     result;                           ///< Buffer used to store function return codes
-static uint16_t        displayHeight      = 0;           ///< Current height of the display (depending on orientation)
-static uint16_t        displayWidth       = 0;           ///< Current width of the display (depending on orientation)
+static SPI_TypeDef*    spiHandle      = (void*)0;         ///< SPI handle used with the SSD1306
+static DMA_TypeDef*    dmaHandle      = (void*)0;         ///< DMA handle used with the SSD1306
+static uint32_t        dmaChannelUsed = 0x00000000U;      ///< DMA channel used
+static screenState     state          = stateResetting;   ///< State machine current state
+static registerValue_t displayBuffer[FRAME_BUFFER_SIZE];  ///< Buffer used to send data to the display
+static systick_t       previousTick_ms = 0;               ///< Latest system tick value saved (in ms)
+static errorCode_u     result;                            ///< Buffer used to store function return codes
+static uint8_t         displayHeight      = 0;            ///< Current height of the display (depending on orientation)
+static uint8_t         displayWidth       = 0;            ///< Current width of the display (depending on orientation)
 static orientation_e   currentOrientation = NB_ORIENTATION;  ///< Current display orientation
 
 /********************************************************************************************************************************************/
