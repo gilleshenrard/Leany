@@ -321,6 +321,11 @@ static errorCode_u stateExitingSleep(void) {
  * @retval 2 Error while setting the screen orientation
  */
 static errorCode_u stateConfiguring(void) {
+    const uint8_t BITE_DOWNSHIFT = 8U;
+    const uint8_t BITE_MASK      = 0xFFU;
+    const pixel_t WHITE          = 0xFFFFU;
+    uint8_t*      iterator       = displayBuffer;
+
     //if sleep out timer not elapsed yet, exit
     if(!isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
         return (ERR_SUCCESS);
@@ -344,6 +349,25 @@ static errorCode_u stateConfiguring(void) {
         return pushErrorCode(result, CONFIG, 2);
     }
 
+    const uint8_t columns[4] = {0, 0, 0, displayWidth};
+    const uint8_t rows[4]    = {0, 0, 0, displayHeight};
+    sendCommand(CASET, columns, 4);
+    sendCommand(RASET, rows, 4);
+
+    for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel++) {
+        *(iterator++) = (registerValue_t)(WHITE >> BITE_DOWNSHIFT);
+        *(iterator++) = (registerValue_t)(WHITE & BITE_MASK);
+    }
+
+    //set command pin and enable SPI
+    systick_t tickAtStart_ms = getSystick();
+    setDataCommandGPIO(COMMAND);
+    LL_SPI_Enable(spiHandle);
+
+    //send the command byte and wait for the transaction to be done
+    LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
+    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
+
     //turn on backlight
     turnBacklightON();
 
@@ -357,38 +381,34 @@ static errorCode_u stateConfiguring(void) {
  * @return Success
  */
 static errorCode_u stateSendingTestPixels(void) {
-    const uint32_t MSB_MASK_32    = 0x80000000U;
-    const uint8_t  BITE_DOWNSHIFT = 8U;
-    const uint8_t  BITE_MASK      = 0xFFU;
-    const pixel_t  RED            = 0xF800U;
-    const pixel_t  WHITE          = 0xFFFFU;
-    uint8_t*       iterator       = displayBuffer;
+    static uint8_t remaining = 5U;
 
-    for(size_t line = 0; line < TEST_PATTERN_SIZE; line++) {
-        for(uint32_t mask = MSB_MASK_32; mask > 0; mask >>= 1U) {
-            if(testPattern[line] & mask) {
-                *(iterator++) = (registerValue_t)(WHITE >> BITE_DOWNSHIFT);
-                *(iterator++) = (registerValue_t)(WHITE & BITE_MASK);
-            } else {
-                *(iterator++) = (registerValue_t)(RED >> BITE_DOWNSHIFT);
-                *(iterator++) = (registerValue_t)(RED & BITE_MASK);
-            }
-        }
+    if(!remaining) {
+        remaining = 5U;
+        LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
+        LL_SPI_Disable(spiHandle);
+        state = stateIdle;
+        return (ERR_SUCCESS);
     }
 
-    const uint8_t columns[4] = {0, displayWidth - TEST_PATTERN_SIZE + 2, 0, displayWidth + 1};
-    const uint8_t rows[4]    = {0, displayHeight - TEST_PATTERN_SIZE + 2, 0, displayHeight + 2};
-    sendCommand(CASET, columns, 4);
-    sendCommand(RASET, rows, 4);
+    //     const uint32_t MSB_MASK_32    = 0x80000000U;
+    //     const uint8_t  BITE_DOWNSHIFT = 8U;
+    //     const uint8_t  BITE_MASK      = 0xFFU;
+    //     const pixel_t  RED            = 0xF800U;
+    //     const pixel_t  WHITE          = 0xFFFFU;
+    //     uint8_t*       iterator       = displayBuffer;
 
-    //set command pin and enable SPI
-    systick_t tickAtStart_ms = getSystick();
-    setDataCommandGPIO(COMMAND);
-    LL_SPI_Enable(spiHandle);
-
-    //send the command byte and wait for the transaction to be done
-    LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
-    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
+    // for(size_t line = 0; line < TEST_PATTERN_SIZE; line++) {
+    //     for(uint32_t mask = MSB_MASK_32; mask > 0; mask >>= 1U) {
+    //         if(testPattern[line] & mask) {
+    //             *(iterator++) = (registerValue_t)(WHITE >> BITE_DOWNSHIFT);
+    //             *(iterator++) = (registerValue_t)(WHITE & BITE_MASK);
+    //         } else {
+    //             *(iterator++) = (registerValue_t)(RED >> BITE_DOWNSHIFT);
+    //             *(iterator++) = (registerValue_t)(RED & BITE_MASK);
+    //         }
+    //     }
+    // }
 
     //set data GPIO and enable SPI
     setDataCommandGPIO(DATA);
@@ -396,8 +416,7 @@ static errorCode_u stateSendingTestPixels(void) {
     //configure the DMA transaction
     LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
     LL_DMA_ClearFlag_GI5(dmaHandle);
-    LL_DMA_SetDataLength(dmaHandle, dmaChannelUsed,
-                         TEST_PATTERN_SIZE * ICON_LINE_SIZE);  //must be reset every time
+    LL_DMA_SetDataLength(dmaHandle, dmaChannelUsed, FRAME_BUFFER_SIZE);  //must be reset every time
     LL_DMA_EnableChannel(dmaHandle, dmaChannelUsed);
 
     //send the data
@@ -405,6 +424,7 @@ static errorCode_u stateSendingTestPixels(void) {
     LL_SPI_EnableDMAReq_TX(spiHandle);
 
     //get to next
+    remaining--;
     state = stateWaitingForTXdone;
     return (ERR_SUCCESS);
 }
@@ -444,9 +464,9 @@ static errorCode_u stateWaitingForTXdone(void) {
     }
 
 finalise:
-    LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
-    LL_SPI_Disable(spiHandle);
-    state = stateIdle;
+    // LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
+    // LL_SPI_Disable(spiHandle);
+    state = stateSendingTestPixels;
     return result;
 }
 
