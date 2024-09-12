@@ -29,7 +29,7 @@ enum {
     RESET_DELAY_MS    = 150U,  ///< Number of milliseconds to wait after reset
     SLEEPOUT_DELAY_MS = 255U,  ///< Number of milliseconds to wait sleep out
     SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
-    FRAME_BUFFER_SIZE = (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 8U,  ///< Size of the frame buffer in bytes
+    FRAME_BUFFER_SIZE = (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 5U,  ///< Size of the frame buffer in bytes
 };
 
 /**
