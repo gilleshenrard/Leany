@@ -397,7 +397,7 @@ static errorCode_u stateSendingTestPixels(void) {
     LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
     LL_DMA_ClearFlag_GI5(dmaHandle);
     LL_DMA_SetDataLength(dmaHandle, dmaChannelUsed,
-                         ICON_LINE_SIZE);  //must be reset every time
+                         TEST_PATTERN_SIZE * ICON_LINE_SIZE);  //must be reset every time
     LL_DMA_EnableChannel(dmaHandle, dmaChannelUsed);
 
     //send the data
