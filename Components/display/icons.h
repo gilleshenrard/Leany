@@ -4,6 +4,7 @@
 
 enum {
     TEST_PATTERN_SIZE = 32U,
+    ICON_LINE_SIZE    = 32U * 2U,
 };
 
 extern const uint32_t testPattern[TEST_PATTERN_SIZE];

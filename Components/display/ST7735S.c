@@ -18,13 +18,18 @@
 #include "stm32f1xx_ll_spi.h"
 #include "systick.h"
 
+/**
+ * @brief Pixel type definition
+ */
+typedef uint16_t pixel_t;
+
 enum {
-    DISPLAY_WIDTH     = 160U,                                ///< Number of pixels in width
-    DISPLAY_HEIGHT    = 128U,                                ///< Number of pixels in height
-    RESET_DELAY_MS    = 150U,                                ///< Number of milliseconds to wait after reset
-    SLEEPOUT_DELAY_MS = 255U,                                ///< Number of milliseconds to wait sleep out
-    SPI_TIMEOUT_MS    = 10U,                                 ///< Number of milliseconds beyond which SPI is in timeout
-    BUFFER_SIZE       = ((uint8_t)TEST_PATTERN_SIZE << 6U),  ///< Size of the frame buffer in bytes
+    DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
+    DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
+    RESET_DELAY_MS    = 150U,  ///< Number of milliseconds to wait after reset
+    SLEEPOUT_DELAY_MS = 255U,  ///< Number of milliseconds to wait sleep out
+    SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
+    BUFFER_SIZE       = (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 8U,  ///< Size of the frame buffer in bytes
 };
 
 /**
@@ -54,11 +59,6 @@ typedef enum {
  * @return Return code of the state
  */
 typedef errorCode_u (*screenState)(void);
-
-/**
- * @brief Pixel type definition
- */
-typedef uint16_t pixel_t;
 
 //utility functions
 static inline void setDataCommandGPIO(DCgpio_e function);
@@ -396,7 +396,8 @@ static errorCode_u stateSendingTestPixels(void) {
     //configure the DMA transaction
     LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
     LL_DMA_ClearFlag_GI5(dmaHandle);
-    LL_DMA_SetDataLength(dmaHandle, dmaChannelUsed, BUFFER_SIZE);  //must be reset every time
+    LL_DMA_SetDataLength(dmaHandle, dmaChannelUsed,
+                         ICON_LINE_SIZE);  //must be reset every time
     LL_DMA_EnableChannel(dmaHandle, dmaChannelUsed);
 
     //send the data
