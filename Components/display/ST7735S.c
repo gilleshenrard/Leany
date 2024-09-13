@@ -11,6 +11,7 @@
 #include "ST7735_initialisation.h"
 #include "ST7735_registers.h"
 #include "errorstack.h"
+#include "icons.h"
 #include "main.h"
 #include "stm32f1xx_ll_dma.h"
 #include "stm32f1xx_ll_gpio.h"
@@ -38,6 +39,7 @@ typedef enum {
     INIT = 0,         ///< st7735sInitialise()
     SEND_CMD,         ///< sendCommand()
     FILL_BACKGROUND,  ///< printBackground()
+    PRINT_CHAR,       ///< printCharacter()
     ORIENT,           ///< st7735sSetOrientation()
     RESETTING,        ///< stateResetting()
     WAKING,           ///< stateExitingSleep()
@@ -312,6 +314,55 @@ static errorCode_u printBackground(void) {
 }
 
 /**
+ * @brief Prepare to display a character on screen
+ * 
+ * @return Success
+ * @retval 1 Error while setting data window columns count
+ * @retval 2 Error while setting data window rows count
+ * @retval 3 Timeout while sending Write Data command
+ */
+static errorCode_u printCharacter(void) {
+    uint8_t* iterator = displayBuffer;
+
+    //set the data window columns count
+    uint8_t columns[4] = {0, 0, 0, VERDANA_NB_COLUMNS};
+    result             = sendCommand(CASET, columns, 4);
+    if(isError(result)) {
+        return pushErrorCode(result, PRINT_CHAR, 1);
+    }
+
+    //set the data window rows count
+    uint8_t rows[4] = {0, 0, 0, VERDANA_NB_ROWS};
+    result          = sendCommand(RASET, rows, 4);
+    if(isError(result)) {
+        return pushErrorCode(result, PRINT_CHAR, 2);
+    }
+
+    //fill the frame buffer with background pixels
+    for(uint8_t row = 0; row < (uint8_t)VERDANA_NB_ROWS; row++) {
+        uncompressIconLine(iterator, VERDANA_0, row);
+        iterator += ((uint8_t)VERDANA_NB_COLUMNS << 1U);
+    }
+
+    //set command pin and enable SPI
+    systick_t tickAtStart_ms = getSystick();
+    setDataCommandGPIO(COMMAND);
+    LL_SPI_Enable(spiHandle);
+
+    //send the command byte and wait for the transaction to be done
+    LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
+    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
+    if(isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {
+        return pushErrorCode(result, PRINT_CHAR, 3);
+    }
+
+    //get to sending data state
+    dataTXRemaining = VERDANA_NB_COLUMNS * VERDANA_NB_ROWS * sizeof(pixel_t);
+    state           = stateStartingDMATX;
+    return (ERR_SUCCESS);
+}
+
+/**
  * @brief Run the state machine
  *
  * @return Return code of the current state
@@ -482,6 +533,16 @@ static errorCode_u stateWaitingForTXdone(void) {
  * @return Success
  */
 static errorCode_u stateIdle(void) {
+    static uint8_t nbChar = 1;
+
+    if(nbChar) {
+        nbChar--;
+        result = printCharacter();
+        if(isError(result)) {
+            state = stateError;
+        }
+    }
+
     return (ERR_SUCCESS);
 }
 
