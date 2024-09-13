@@ -1,12 +1,16 @@
 /**
  * @file icons.c
  * @author Gilles Henrard
- * @brief 
+ * @brief Declare icons bitmaps where each bit represent either a background or a foreground pixel
  * @date 13/09/2024
  * 
  * @copyright Copyright (c) 2024
  * 
- * - generate bitmaps
+ *  * @details Generated with the application The Dot Factory v0.1.4
+ * 
+ * Software Github page : https://github.com/pavius/the-dot-factory
+ *
+ * 1. generate bitmaps
  *      - characters : 0123456789+-.°
  *      - Verdana 48pts
  *      - Height and width fixed
@@ -15,12 +19,12 @@
  *      - Comments : Bitmap visualiser and char descriptor
  *      - Byte : RowMajor, MSB first, Format Hex, leading 0x
  *      - Variable format : Bitmaps "const uint64_t {0}Bitmaps"
- * - copy bitmaps only
- * - remove all ", 0x" to merge row bytes together
- * - enclose each bitmap with carrets and a comma
- * - transform the array in a two-dimensions array
- * - move numbers at first places to take advantage of indexes in the array
- * - assign each bitmap array to an enum entry
+ * 2. copy bitmaps only
+ * 3. remove all ", 0x" to merge row bytes together
+ * 4. enclose each bitmap with carrets and a comma
+ * 5. transform the array in a two-dimensions array
+ * 6. move numbers at first places to take advantage of indexes in the array
+ * 7. assign each bitmap array to an enum entry
  */
 
 #include "icons.h"
