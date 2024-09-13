@@ -71,7 +71,7 @@ static errorCode_u printBackground(void);
 static errorCode_u stateResetting(void);
 static errorCode_u stateConfiguring(void);
 static errorCode_u stateExitingSleep(void);
-static errorCode_u stateSendingData(void);
+static errorCode_u stateStartingDMATX(void);
 static errorCode_u stateIdle(void);
 static errorCode_u stateWaitingForTXdone(void);
 static errorCode_u stateError(void);
@@ -307,7 +307,7 @@ static errorCode_u printBackground(void) {
 
     //get to sending data state
     dataTXRemaining = DISPLAY_HEIGHT * DISPLAY_WIDTH * sizeof(pixel_t);
-    state           = stateSendingData;
+    state           = stateStartingDMATX;
     return (ERR_SUCCESS);
 }
 
@@ -404,7 +404,7 @@ static errorCode_u stateConfiguring(void) {
     //fill the screen with the background colour
     printBackground();
 
-    state = stateSendingData;
+    state = stateStartingDMATX;
     return (ERR_SUCCESS);
 }
 
@@ -413,7 +413,7 @@ static errorCode_u stateConfiguring(void) {
  * 
  * @return Success
  */
-static errorCode_u stateSendingData(void) {
+static errorCode_u stateStartingDMATX(void) {
     //if all data sent, close DMA and SPI and get to idle state
     if(!dataTXRemaining) {
         LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
@@ -479,7 +479,7 @@ static errorCode_u stateWaitingForTXdone(void) {
 
     //if transmission complete, get to sending data state
     if(LL_DMA_IsActiveFlag_TC5(dmaHandle)) {
-        state = stateSendingData;
+        state = stateStartingDMATX;
     }
 
     return (ERR_SUCCESS);
