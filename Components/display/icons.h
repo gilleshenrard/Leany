@@ -25,6 +25,6 @@ typedef enum {
     NB_CHARACTERS,
 } verdanaCharacter_e;
 
-extern const uint64_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
+void uncompressIconLine(uint8_t* buffer, verdanaCharacter_e character, uint8_t line);
 
 #endif
