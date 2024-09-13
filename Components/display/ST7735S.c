@@ -445,15 +445,6 @@ static errorCode_u stateStartingDMATX(void) {
 }
 
 /**
- * @brief State in which the screen waits for instructions
- * 
- * @return Success
- */
-static errorCode_u stateIdle(void) {
-    return (ERR_SUCCESS);
-}
-
-/**
  * @brief State in which the machine waits for a DMA transmission to end
  *
  * @return Success
@@ -482,6 +473,15 @@ static errorCode_u stateWaitingForTXdone(void) {
         state = stateStartingDMATX;
     }
 
+    return (ERR_SUCCESS);
+}
+
+/**
+ * @brief State in which the screen waits for instructions
+ * 
+ * @return Success
+ */
+static errorCode_u stateIdle(void) {
     return (ERR_SUCCESS);
 }
 
