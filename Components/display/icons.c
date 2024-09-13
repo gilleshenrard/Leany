@@ -35,15 +35,14 @@ extern const uint64_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
 void uncompressIconLine(uint8_t* buffer, verdanaCharacter_e character, uint8_t line) {
     const uint8_t MSB_DOWNSHIFT = 8U;
     const uint8_t LSB_MASK      = 0xFFU;
-    uint16_t      pixelColour   = 0;
 
     uint64_t pixelMask = 1U;
     pixelMask <<= (VERDANA_NB_COLUMNS - 1U);
 
     while(pixelMask > 0) {
-        pixelColour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? 0xFFFFU : 0x0000U);
-        *(buffer++) = (uint8_t)(pixelColour >> MSB_DOWNSHIFT);
-        *(buffer++) = (uint8_t)(pixelColour & LSB_MASK);
+        uint16_t pixelColour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? 0xFFFFU : 0x0000U);
+        *(buffer++)          = (uint8_t)(pixelColour >> MSB_DOWNSHIFT);
+        *(buffer++)          = (uint8_t)(pixelColour & LSB_MASK);
 
         pixelMask >>= 1U;
     }
