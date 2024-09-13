@@ -37,15 +37,15 @@ void uncompressIconLine(uint8_t* buffer, verdanaCharacter_e character, uint8_t l
     const uint8_t LSB_MASK      = 0xFFU;
     uint16_t      pixelColour   = 0;
 
-    uint64_t MSB = 1U;
-    MSB <<= (VERDANA_NB_COLUMNS - 1U);
+    uint64_t pixelMask = 1U;
+    pixelMask <<= (VERDANA_NB_COLUMNS - 1U);
 
-    while(MSB > 0) {
-        pixelColour = ((verdana_48ptBitmaps[character][line] & MSB) ? 0xFFFFU : 0x0000U);
+    while(pixelMask > 0) {
+        pixelColour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? 0xFFFFU : 0x0000U);
         *(buffer++) = (uint8_t)(pixelColour >> MSB_DOWNSHIFT);
         *(buffer++) = (uint8_t)(pixelColour & LSB_MASK);
 
-        MSB >>= 1U;
+        pixelMask >>= 1U;
     }
 }
 
