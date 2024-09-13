@@ -272,7 +272,6 @@ static inline void turnBacklightON(void) {
 static errorCode_u printBackground(void) {
     const uint8_t BITE_DOWNSHIFT = 8U;
     const uint8_t BITE_MASK      = 0xFFU;
-    const pixel_t CHARCOAL_GREY  = 0x31A6U;
     uint8_t*      iterator       = displayBuffer;
 
     //set the data window columns count
@@ -291,8 +290,8 @@ static errorCode_u printBackground(void) {
 
     //fill the frame buffer with background pixels
     for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel++) {
-        *(iterator++) = (registerValue_t)(CHARCOAL_GREY >> BITE_DOWNSHIFT);
-        *(iterator++) = (registerValue_t)(CHARCOAL_GREY & BITE_MASK);
+        *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL >> BITE_DOWNSHIFT);
+        *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL & BITE_MASK);
     }
 
     //set command pin and enable SPI

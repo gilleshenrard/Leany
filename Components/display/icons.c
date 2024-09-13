@@ -30,9 +30,6 @@
 #include "icons.h"
 #include <stdint.h>
 
-static const uint16_t CHARCOAL_GREY  = 0x31A6U;
-static const uint16_t CHINESE_SILVER = 0xDEFBU;
-
 extern const uint64_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
 
 void uncompressIconLine(uint8_t* buffer, verdanaCharacter_e character, uint8_t line) {
@@ -43,7 +40,7 @@ void uncompressIconLine(uint8_t* buffer, verdanaCharacter_e character, uint8_t l
     pixelMask <<= (VERDANA_NB_COLUMNS - 1U);
 
     while(pixelMask > 0) {
-        uint16_t pixelColour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? CHINESE_SILVER : CHARCOAL_GREY);
+        uint16_t pixelColour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? BRIGHT_GRAY : DARK_CHARCOAL);
         *(buffer++)          = (uint8_t)(pixelColour >> MSB_DOWNSHIFT);
         *(buffer++)          = (uint8_t)(pixelColour & LSB_MASK);
 

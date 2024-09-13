@@ -8,6 +8,11 @@ enum {
 };
 
 typedef enum {
+    BRIGHT_GRAY   = 0xEF7DU,  ///< #EEEEEE
+    DARK_CHARCOAL = 0x31A6U,  ///< #333333
+} colours_e;
+
+typedef enum {
     VERDANA_0 = 0,
     VERDANA_1,
     VERDANA_2,
