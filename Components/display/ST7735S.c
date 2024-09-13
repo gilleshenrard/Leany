@@ -281,7 +281,7 @@ static errorCode_u printBackground(void) {
     }
 
     //set the data window rows count
-    uint8_t rows[4] = {0, 0, 0, displayHeight};
+    uint8_t rows[4] = {0, 0, 0, displayHeight + 1};
     result          = sendCommand(RASET, rows, 4);
     if(isError(result)) {
         return pushErrorCode(result, FILL_BACKGROUND, 2);
@@ -306,7 +306,7 @@ static errorCode_u printBackground(void) {
     }
 
     //get to sending data state
-    dataTXRemaining = DISPLAY_HEIGHT * DISPLAY_WIDTH * sizeof(pixel_t);
+    dataTXRemaining = (DISPLAY_HEIGHT + 2) * (DISPLAY_WIDTH + 1) * sizeof(pixel_t);
     state           = stateStartingDMATX;
     return (ERR_SUCCESS);
 }
