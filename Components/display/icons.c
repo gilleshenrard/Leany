@@ -67,7 +67,7 @@ void uncompressIconLine(registerValue_t* buffer, verdanaCharacter_e character, u
     while(pixelMask > 0) {
         //get the proper colour to fill
         pixel_t colour =
-            ((verdana_48ptBitmaps[character][line] & pixelMask) == FOREGROUND ? BRIGHT_GRAY : DARK_CHARCOAL);
+            ((verdana_48ptBitmaps[character][line] & pixelMask) == BACKGROUND ? DARK_CHARCOAL : BRIGHT_GRAY);
 
         //set the two next buffer values (done byte by byte to avoid small endian issues)
         *(buffer++) = (registerValue_t)(colour >> MSB_DOWNSHIFT);
