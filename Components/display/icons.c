@@ -30,25 +30,26 @@
 #include "icons.h"
 #include <stdint.h>
 
-extern const uint64_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
+typedef uint64_t line_t;
 
-void uncompressIconLine(uint8_t* buffer, verdanaCharacter_e character, uint8_t line) {
-    const uint8_t MSB_DOWNSHIFT = 8U;
-    const uint8_t LSB_MASK      = 0xFFU;
+extern const line_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
 
-    uint64_t pixelMask = 1U;
-    pixelMask <<= (VERDANA_NB_COLUMNS - 1U);
+void uncompressIconLine(registerValue_t* buffer, verdanaCharacter_e character, uint8_t line) {
+    const registerValue_t MSB_DOWNSHIFT = 8U;
+    const registerValue_t LSB_MASK      = 0xFFU;
+
+    line_t pixelMask = ((line_t)1U << ((line_t)VERDANA_NB_COLUMNS - 1U));
 
     while(pixelMask > 0) {
-        uint16_t pixelColour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? BRIGHT_GRAY : DARK_CHARCOAL);
-        *(buffer++)          = (uint8_t)(pixelColour >> MSB_DOWNSHIFT);
-        *(buffer++)          = (uint8_t)(pixelColour & LSB_MASK);
+        pixel_t colour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? BRIGHT_GRAY : DARK_CHARCOAL);
+        *(buffer++)    = (registerValue_t)(colour >> MSB_DOWNSHIFT);
+        *(buffer++)    = (registerValue_t)(colour & LSB_MASK);
 
         pixelMask >>= 1U;
     }
 }
 
-const uint64_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS] =
+const line_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS] =
     {
         // clang-format off
     [VERDANA_0] = {

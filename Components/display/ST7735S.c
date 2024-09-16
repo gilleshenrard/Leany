@@ -18,11 +18,6 @@
 #include "stm32f1xx_ll_spi.h"
 #include "systick.h"
 
-/**
- * @brief Pixel type definition
- */
-typedef uint16_t pixel_t;
-
 enum {
     DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
     DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height

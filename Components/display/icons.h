@@ -1,6 +1,7 @@
 #ifndef INC_HARDWARE_SCREEN_ICONS_H_
 #define INC_HARDWARE_SCREEN_ICONS_H_
 #include <stdint.h>
+#include "ST7735_initialisation.h"
 
 enum {
     VERDANA_NB_ROWS    = 49U,
@@ -30,6 +31,11 @@ typedef enum {
     NB_CHARACTERS,
 } verdanaCharacter_e;
 
-void uncompressIconLine(uint8_t* buffer, verdanaCharacter_e character, uint8_t line);
+/**
+ * @brief Pixel type definition
+ */
+typedef uint16_t pixel_t;
+
+void uncompressIconLine(registerValue_t* buffer, verdanaCharacter_e character, uint8_t line);
 
 #endif
