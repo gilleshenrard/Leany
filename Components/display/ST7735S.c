@@ -63,6 +63,7 @@ static inline void turnBacklightON(void);
 // static inline void turnBacklightOFF(void);
 static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
 static errorCode_u printBackground(void);
+static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t Xstart, uint8_t Ystart);
 
 //state machine
 static errorCode_u stateResetting(void);
@@ -310,23 +311,26 @@ static errorCode_u printBackground(void) {
 /**
  * @brief Prepare to display a character on screen
  * 
+ * @param  character Character to print
+ * @param  Xstart X coordinate of the character's upper left corner
+ * @param  Ystart Y coordinate of the character's upper left corner
  * @return Success
  * @retval 1 Error while setting data window columns count
  * @retval 2 Error while setting data window rows count
  * @retval 3 Timeout while sending Write Data command
  */
-static errorCode_u printCharacter(void) {
+static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t Xstart, uint8_t Ystart) {
     uint8_t* iterator = displayBuffer;
 
     //set the data window columns count
-    uint8_t columns[4] = {0, 2, 0, VERDANA_NB_COLUMNS + 1};
+    uint8_t columns[4] = {0, Xstart + 2U, 0, Xstart + VERDANA_NB_COLUMNS + 1U};
     result             = sendCommand(CASET, columns, 4);
     if(isError(result)) {
         return pushErrorCode(result, PRINT_CHAR, 1);
     }
 
     //set the data window rows count
-    uint8_t rows[4] = {0, 2, 0, VERDANA_NB_ROWS + 2};
+    uint8_t rows[4] = {0, Ystart + 2U, 0, Ystart + VERDANA_NB_ROWS + 2U};
     result          = sendCommand(RASET, rows, 4);
     if(isError(result)) {
         return pushErrorCode(result, PRINT_CHAR, 2);
@@ -334,7 +338,7 @@ static errorCode_u printCharacter(void) {
 
     //fill the frame buffer with background pixels
     for(uint8_t row = 0; row < (uint8_t)VERDANA_NB_ROWS; row++) {
-        uncompressIconLine(iterator, VERDANA_0, row);
+        uncompressIconLine(iterator, character, row);
         iterator += ((uint8_t)VERDANA_NB_COLUMNS << 1U);
     }
 
@@ -531,7 +535,7 @@ static errorCode_u stateIdle(void) {
 
     if(nbChar) {
         nbChar--;
-        result = printCharacter();
+        result = printCharacter(VERDANA_1, 0, 0);
         if(isError(result)) {
             state = stateError;
         }
