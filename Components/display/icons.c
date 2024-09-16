@@ -36,6 +36,14 @@
 typedef uint64_t line_t;
 
 /**
+ * @brief Values a bit in the bitmaps can have
+ */
+typedef enum {
+    BACKGROUND = 0,  ///< Background = 0
+    FOREGROUND,      ///< Foreground = 1
+} pixelType_e;
+
+/**
  * @brief Characters array forward-declaration
  */
 extern const line_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
@@ -58,7 +66,8 @@ void uncompressIconLine(registerValue_t* buffer, verdanaCharacter_e character, u
     //For each pixel in the line (left to right)
     while(pixelMask > 0) {
         //get the proper colour to fill
-        pixel_t colour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? BRIGHT_GRAY : DARK_CHARCOAL);
+        pixel_t colour =
+            ((verdana_48ptBitmaps[character][line] & pixelMask) == FOREGROUND ? BRIGHT_GRAY : DARK_CHARCOAL);
 
         //set the two next buffer values (done byte by byte to avoid small endian issues)
         *(buffer++) = (registerValue_t)(colour >> MSB_DOWNSHIFT);
