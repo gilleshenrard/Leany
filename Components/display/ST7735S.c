@@ -2,7 +2,7 @@
  * @file ST7735S.c
  * @brief Implement the functioning of the ST7735S TFT screen via SPI and DMA
  * @author Gilles Henrard
- * @date 11/09/2024
+ * @date 16/09/2024
  *
  * @note Datasheet : https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
  */
@@ -196,7 +196,7 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
         return (createErrorCode(SEND_CMD, 4, ERR_WARNING));
     }
 
-    return (result);
+    return (ERR_SUCCESS);
 }
 
 /**
