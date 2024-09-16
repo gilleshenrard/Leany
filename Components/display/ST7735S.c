@@ -315,25 +315,36 @@ static errorCode_u printBackground(void) {
  * @param  Xstart X coordinate of the character's upper left corner
  * @param  Ystart Y coordinate of the character's upper left corner
  * @return Success
- * @retval 1 Error while setting data window columns count
- * @retval 2 Error while setting data window rows count
- * @retval 3 Timeout while sending Write Data command
+ * @retval 1 Character partially out of screen bounds
+ * @retval 2 Error while setting data window columns count
+ * @retval 3 Error while setting data window rows count
+ * @retval 4 Timeout while sending Write Data command
  */
 static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t Xstart, uint8_t Ystart) {
     uint8_t* iterator = displayBuffer;
+
+    //if character completely out of screen, ignore request
+    if((Xstart >= DISPLAY_WIDTH) || (Ystart >= DISPLAY_HEIGHT)) {
+        return (ERR_SUCCESS);
+    }
+
+    //if character partially out of screen, error (easier)
+    if(((Xstart + VERDANA_NB_COLUMNS) >= DISPLAY_WIDTH) || ((Ystart + VERDANA_NB_ROWS) >= DISPLAY_HEIGHT)) {
+        return createErrorCode(PRINT_CHAR, 1, ERR_WARNING);
+    }
 
     //set the data window columns count
     uint8_t columns[4] = {0, Xstart + 2U, 0, Xstart + VERDANA_NB_COLUMNS + 1U};
     result             = sendCommand(CASET, columns, 4);
     if(isError(result)) {
-        return pushErrorCode(result, PRINT_CHAR, 1);
+        return pushErrorCode(result, PRINT_CHAR, 2);
     }
 
     //set the data window rows count
     uint8_t rows[4] = {0, Ystart + 2U, 0, Ystart + VERDANA_NB_ROWS + 2U};
     result          = sendCommand(RASET, rows, 4);
     if(isError(result)) {
-        return pushErrorCode(result, PRINT_CHAR, 2);
+        return pushErrorCode(result, PRINT_CHAR, 3);
     }
 
     //fill the frame buffer with background pixels
@@ -351,7 +362,7 @@ static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t Xstart, 
     LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
     while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
     if(isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {
-        return pushErrorCode(result, PRINT_CHAR, 3);
+        return pushErrorCode(result, PRINT_CHAR, 4);
     }
 
     //get to sending data state
