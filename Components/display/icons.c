@@ -30,25 +30,48 @@
 #include "icons.h"
 #include <stdint.h>
 
+/**
+ * @brief Type definition of a line of a character
+ */
 typedef uint64_t line_t;
 
+/**
+ * @brief Characters array forward-declaration
+ */
 extern const line_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
 
+/**
+ * @brief Uncompress a character from the array to a buffer
+ * @note Each character is represented with a bit for each pixel (values are either background or foreground)
+ * 
+ * @param[out] buffer Buffer to fill with the pixel values
+ * @param character Character to uncompress
+ * @param line Line of the character to uncompress
+ */
 void uncompressIconLine(registerValue_t* buffer, verdanaCharacter_e character, uint8_t line) {
     const registerValue_t MSB_DOWNSHIFT = 8U;
     const registerValue_t LSB_MASK      = 0xFFU;
 
+    //prepare a mask to use with a bitwise AND, to check if the current pixels is background or foreground
     line_t pixelMask = ((line_t)1U << ((line_t)VERDANA_NB_COLUMNS - 1U));
 
+    //For each pixel in the line (left to right)
     while(pixelMask > 0) {
+        //get the proper colour to fill
         pixel_t colour = ((verdana_48ptBitmaps[character][line] & pixelMask) ? BRIGHT_GRAY : DARK_CHARCOAL);
-        *(buffer++)    = (registerValue_t)(colour >> MSB_DOWNSHIFT);
-        *(buffer++)    = (registerValue_t)(colour & LSB_MASK);
 
+        //set the two next buffer values (done byte by byte to avoid small endian issues)
+        *(buffer++) = (registerValue_t)(colour >> MSB_DOWNSHIFT);
+        *(buffer++) = (registerValue_t)(colour & LSB_MASK);
+
+        //get to the next pixel
         pixelMask >>= 1U;
     }
 }
 
+/**
+ * @brief Array of character bitmaps, where each pixel is described as a bit (foreground or background)
+ */
 const line_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS] =
     {
         // clang-format off
