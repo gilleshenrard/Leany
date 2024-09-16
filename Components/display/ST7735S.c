@@ -319,14 +319,14 @@ static errorCode_u printCharacter(void) {
     uint8_t* iterator = displayBuffer;
 
     //set the data window columns count
-    uint8_t columns[4] = {0, 0, 0, VERDANA_NB_COLUMNS};
+    uint8_t columns[4] = {0, 2, 0, VERDANA_NB_COLUMNS + 1};
     result             = sendCommand(CASET, columns, 4);
     if(isError(result)) {
         return pushErrorCode(result, PRINT_CHAR, 1);
     }
 
     //set the data window rows count
-    uint8_t rows[4] = {0, 0, 0, VERDANA_NB_ROWS};
+    uint8_t rows[4] = {0, 2, 0, VERDANA_NB_ROWS + 2};
     result          = sendCommand(RASET, rows, 4);
     if(isError(result)) {
         return pushErrorCode(result, PRINT_CHAR, 2);
