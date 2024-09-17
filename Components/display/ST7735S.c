@@ -115,6 +115,7 @@ errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dm
     //make sure to disable ST7735S SPI communication
     LL_SPI_Disable(spiHandle);
     LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
+    LL_DMA_EnableIT_TC(dmaHandle, dmaChannelUsed);
 
     //set the DMA source and destination addresses (will always use the same ones)
     LL_DMA_ConfigAddresses(dmaHandle, dmaChannelUsed, (uint32_t)&displayBuffer, LL_SPI_DMA_GetRegAddr(spiHandle),
