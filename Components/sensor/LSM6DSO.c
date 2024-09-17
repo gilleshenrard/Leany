@@ -108,9 +108,8 @@ float        temperature_degC              = BASE_TEMPERATURE;  ///< Temperature
 /**
  * @brief LSM6DSO INT1 and INT2 GPIO pins interrupt handler
  * 
- * @param GPIO_Pin Pin which triggered the interruption
+ * @param interruptPin Number of the pin triggered (1 or 2)
  */
-
 void lsm6dsoInterruptTriggered(uint8_t interruptPin) {
     BaseType_t hasWoken = 0;
 
