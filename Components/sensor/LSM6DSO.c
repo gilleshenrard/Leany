@@ -172,13 +172,13 @@ static errorCode_u readRegisters(LSM6DSOregister_e firstRegister, uint8_t value[
     }
 
     //set timeout timer and enable SPI
-    systick_t lsm6dsoSPITimer_ms = getSystick();
+    uint32_t SPItick = HAL_GetTick();
     LL_SPI_Enable(spiHandle);
     uint8_t* iterator = value;
 
     //send the read request and ignore the first byte received (reply to the write request)
     LL_SPI_TransmitData8(spiHandle, LSM6_READ | (uint8_t)firstRegister);
-    while((!LL_SPI_IsActiveFlag_RXNE(spiHandle)) && !isTimeElapsed(lsm6dsoSPITimer_ms, SPI_TIMEOUT_MS)) {};
+    while((!LL_SPI_IsActiveFlag_RXNE(spiHandle)) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {};
     *iterator = LL_SPI_ReceiveData8(spiHandle);
 
     //receive the bytes to read
@@ -187,22 +187,22 @@ static errorCode_u readRegisters(LSM6DSOregister_e firstRegister, uint8_t value[
         LL_SPI_TransmitData8(spiHandle, SPI_RX_FILLER);
 
         //wait for data to be available, and read it
-        while((!LL_SPI_IsActiveFlag_RXNE(spiHandle)) && lsm6dsoSPITimer_ms) {};
+        while((!LL_SPI_IsActiveFlag_RXNE(spiHandle)) && SPItick) {};
         *iterator = LL_SPI_ReceiveData8(spiHandle);
 
         iterator++;
         size--;
-    } while(size && !isTimeElapsed(lsm6dsoSPITimer_ms, SPI_TIMEOUT_MS));
+    } while(size && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS));
 
     //wait for transaction to be finished and clear Overrun flag
-    while(LL_SPI_IsActiveFlag_BSY(spiHandle) && !isTimeElapsed(lsm6dsoSPITimer_ms, SPI_TIMEOUT_MS)) {};
+    while(LL_SPI_IsActiveFlag_BSY(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {};
     LL_SPI_ClearFlag_OVR(spiHandle);
 
     //disable SPI
     LL_SPI_Disable(spiHandle);
 
     //if timeout, error
-    if(isTimeElapsed(lsm6dsoSPITimer_ms, SPI_TIMEOUT_MS)) {
+    if(((HAL_GetTick() - SPItick) >= SPI_TIMEOUT_MS)) {
         return (createErrorCode(READ_REGISTERS, 2, ERR_WARNING));
     }
 
@@ -231,27 +231,27 @@ static errorCode_u writeRegister(LSM6DSOregister_e registerNumber, uint8_t value
     }
 
     //set timeout timer and enable SPI
-    systick_t lsm6dsoSPITimer_ms = getSystick();
+    uint32_t SPItick = HAL_GetTick();
     LL_SPI_Enable(spiHandle);
 
     //send the write instruction
     LL_SPI_TransmitData8(spiHandle, LSM6_WRITE | (uint8_t)registerNumber);
 
     //wait for TX buffer to be ready and send value to write
-    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(lsm6dsoSPITimer_ms, SPI_TIMEOUT_MS)) {};
-    if(!isTimeElapsed(lsm6dsoSPITimer_ms, SPI_TIMEOUT_MS)) {
+    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {};
+    if(((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {
         LL_SPI_TransmitData8(spiHandle, value);
     }
 
     //wait for transaction to be finished and clear Overrun flag
-    while(LL_SPI_IsActiveFlag_BSY(spiHandle) && !isTimeElapsed(lsm6dsoSPITimer_ms, SPI_TIMEOUT_MS)) {};
+    while(LL_SPI_IsActiveFlag_BSY(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {};
     LL_SPI_ClearFlag_OVR(spiHandle);
 
     //disable SPI
     LL_SPI_Disable(spiHandle);
 
     //if timeout, error
-    if(isTimeElapsed(lsm6dsoSPITimer_ms, SPI_TIMEOUT_MS)) {
+    if(((HAL_GetTick() - SPItick) >= SPI_TIMEOUT_MS)) {
         return (createErrorCode(WRITE_REGISTER, 3, ERR_WARNING));
     }
 
