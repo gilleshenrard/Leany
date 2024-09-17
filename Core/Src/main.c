@@ -108,8 +108,8 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  createLSM6DSOTask(SPI1);
   LL_SYSTICK_EnableIT();
-  lsm6dsoInitialise(SPI1);
   st7735sInitialise(SPI2, DMA1, LL_DMA_CHANNEL_5);
   /* USER CODE END 2 */
 
@@ -131,12 +131,6 @@ int main(void)
   {
     //reset the watchdog
     LL_IWDG_ReloadCounter(IWDG);
-
-	  //update the MEMS sensor state machine
-	  result = lsm6dsoUpdate();
-	  if(isError(result)){
-		  result.moduleID = 1;
-    }
 
 	  //update the screen state machine
 	  result = st7735sUpdate();

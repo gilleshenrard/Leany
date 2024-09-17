@@ -12,7 +12,12 @@
  */
 #include "LSM6DSO.h"
 #include <math.h>
+#include <portmacro.h>
+#include <projdefs.h>
 #include <stdint.h>
+#include <stm32f1xx_hal.h>
+#include <stm32f1xx_hal_def.h>
+#include "FreeRTOS.h"
 #include "LSM6DSO_registers.h"
 #include "errorstack.h"
 #include "main.h"
@@ -20,11 +25,14 @@
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
 #include "systick.h"
+#include "task.h"
 
 #define ANGLE_DELTA_MINIMUM       0.05F        ///< Minimum value for angle differences to be noticed
 #define RADIANS_TO_DEGREES_TENTHS 572.957795F  ///< Ratio between radians and tenths of degrees (= 10 * (180°/PI))
 #define BASE_TEMPERATURE          25.0F        ///< Temperature at which the LSM6DSO temperature reading will give 0
 enum {
+    STACK_SIZE           = 128U,                        ///< Amount of words in the task stack
+    TASK_LOW_PRIORITY    = 8U,                          ///< FreeRTOS number for a low priority task
     BOOT_TIME_MS         = 10U,                         ///< Number of milliseconds to wait for the MEMS to boot
     SPI_TIMEOUT_MS       = 10U,                         ///< Number of milliseconds beyond which SPI is in timeout
     TIMEOUT_MS           = 1000U,                       ///< Max number of milliseconds to wait for the device ID
@@ -68,7 +76,7 @@ typedef union {
  *
  * @return Error code of the state
  */
-typedef errorCode_u (*lsm6dsoState)();
+typedef errorCode_u (*lsm6dsoState)(void);
 
 //machine state
 static errorCode_u stateWaitingBoot();
@@ -80,6 +88,7 @@ static errorCode_u stateHoldingValues();
 static errorCode_u stateError();
 
 //registers read/write functions
+static void        taskLSM6DSO(void* argument);
 static errorCode_u writeRegister(LSM6DSOregister_e registerNumber, uint8_t value);
 static errorCode_u readRegisters(LSM6DSOregister_e firstRegister, uint8_t value[], uint8_t size);
 
@@ -91,36 +100,52 @@ static void           complementaryFilter(const float accelerometer_mG[], const 
 static systick_t lsm6dsoTimer_ms = 0;  ///< Timer used in various states of the LSM6DSO (in ms)
 
 //state variables
-static SPI_TypeDef* spiHandle                   = (void*)0;          ///< SPI handle used by the LSM6DSO device
-static lsm6dsoState state                       = stateWaitingBoot;  ///< State machine current state
 static uint8_t     accelerometerSamplesToIgnore = 0;  ///< Number of samples to ignore after change of ODR or power mode
-static errorCode_u result;                            ///< Variables used to store error codes
-static float       anglesAtZeroing_rad[NB_AXIS];      ///< Accelerometer values at time of zeroing in [m/s²]
-static float       latestAngles_rad[NB_AXIS - 1] = {0.0F, 0.0F};      ///< Latest angles measured and filtered in [rad]
-float              temperature_degC              = BASE_TEMPERATURE;  ///< Temperature of the LSM6DSO in [°C]
+static volatile TaskHandle_t taskHandle = NULL;
+static SPI_TypeDef*          spiHandle  = (void*)0;             ///< SPI handle used by the LSM6DSO device
+static lsm6dsoState          state      = stateStartup;         ///< State machine current state
+static errorCode_u           result;                            ///< Variables used to store error codes
+static float                 anglesAtZeroing_rad[NB_AXIS];      ///< Accelerometer values at time of zeroing in [m/s²]
+static float latestAngles_rad[NB_AXIS - 1] = {0.0F, 0.0F};      ///< Latest angles measured and filtered in [rad]
+float        temperature_degC              = BASE_TEMPERATURE;  ///< Temperature of the LSM6DSO in [°C]
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
 
 /**
- * @brief Initialise the LSM6DSO
+ * @brief Create a LSM6DSO FreeRTOS static task
  *
- * @param handle	SPI handle used
- * @returns 		Success
+ * @param handle SPI handle used by the LSM6DSO
  */
-errorCode_u lsm6dsoInitialise(const SPI_TypeDef* handle) {
+void createLSM6DSOTask(const SPI_TypeDef* handle) {
+    static StackType_t  taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
+    static StaticTask_t taskState             = {0};  ///< Task state variables
+
+    //save the SPI handle used by LSM6DSO and disable SPI1
     spiHandle = (SPI_TypeDef*)handle;
     LL_SPI_Disable(spiHandle);
 
-    return (ERR_SUCCESS);
+    //create the static task
+    taskHandle =
+        xTaskCreateStatic(taskLSM6DSO, "LSM6DSO task", STACK_SIZE, NULL, TASK_LOW_PRIORITY, taskStack, &taskState);
+    if(!taskHandle) {
+        Error_Handler();
+    }
 }
 
 /**
  * @brief Run the LSM6DSO state machine
- * @returns Current state return code
+ * 
+ * @param argument Unused
  */
-errorCode_u lsm6dsoUpdate() {
-    return ((*state)());
+static void taskLSM6DSO(void* argument) {
+    UNUSED(argument);
+
+    while(1) {
+        if(isError((*state)())) {
+            Error_Handler();
+        }
+    }
 }
 
 /**
