@@ -425,8 +425,8 @@ static errorCode_u stateStartup(void) {
  * @retval 0 Success
  * @retval 1 Error while writing a register
  */
-static errorCode_u stateConfiguring() {
     const uint8_t         AXL_SAMPLES_TO_IGNORE = 2U;  ///< Number of samples to drop (see stateIgnoringSamples())
+static errorCode_u stateConfiguring(void) {
     const registerValue_t initialisationArray[NB_INIT_REG] = {
         {   CTRL3_C, LSM6_SOFTWARE_RESET | LSM6_INT_ACTIVE_LOW}, //reboot MEMS memory and reset software
         {FIFO_CTRL4,                          FIFO_MODE_BYPASS}, //disable the FIFO (bypass mode)
