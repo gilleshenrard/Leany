@@ -22,7 +22,6 @@
 #include "stm32f103xb.h"
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_hal_def.h"
-#include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
 #include "task.h"
 
@@ -111,11 +110,12 @@ float        temperature_degC              = BASE_TEMPERATURE;  ///< Temperature
  * 
  * @param GPIO_Pin Pin which triggered the interruption
  */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+
+void lsm6dsoInterruptTriggered(uint8_t interruptPin) {
     BaseType_t hasWoken = 0;
 
     //if INT1, notify the LSM6DSO task
-    if(GPIO_Pin == LSM6DSO_INT1_Pin) {
+    if(interruptPin == 1) {
         vTaskNotifyGiveFromISR(taskHandle, &hasWoken);
     }
 
@@ -159,7 +159,8 @@ static void taskLSM6DSO(void* argument) {
     UNUSED(argument);
 
     while(1) {
-        if(isError((*state)())) {
+        result = (*state)();
+        if(isError(result)) {
             Error_Handler();
         }
     }
