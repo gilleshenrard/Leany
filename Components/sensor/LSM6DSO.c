@@ -568,7 +568,7 @@ static errorCode_u stateMeasuring(void) {
  * 
  * @return Success
  */
-static errorCode_u stateHoldingValues() {
+static errorCode_u stateHoldingValues(void) {
     return (ERR_SUCCESS);
 }
 
@@ -577,6 +577,6 @@ static errorCode_u stateHoldingValues() {
  * 
  * @return Success
  */
-static errorCode_u stateError() {
+static errorCode_u stateError(void) {
     return (ERR_SUCCESS);
 }
