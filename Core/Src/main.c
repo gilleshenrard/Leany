@@ -108,9 +108,9 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-  createLSM6DSOTask(SPI1);
   LL_SYSTICK_EnableIT();
-  st7735sInitialise(SPI2, DMA1, LL_DMA_CHANNEL_5);
+  createLSM6DSOTask(SPI1);
+  createST7735Stask(SPI2, DMA1, LL_DMA_CHANNEL_5);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -126,17 +126,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  errorCode_u result;
   while (1)
   {
     //reset the watchdog
     LL_IWDG_ReloadCounter(IWDG);
-
-	  //update the screen state machine
-	  result = st7735sUpdate();
-	  if(isError(result)){
-		  result.moduleID = 2;
-    }
 
     //update the buttons' state machines
     buttonsUpdate();

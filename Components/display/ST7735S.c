@@ -8,6 +8,8 @@
  */
 #include "ST7735S.h"
 #include <stdint.h>
+#include <stm32f1xx_hal_def.h>
+#include "FreeRTOS.h"
 #include "ST7735_initialisation.h"
 #include "ST7735_registers.h"
 #include "errorstack.h"
@@ -17,8 +19,11 @@
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
 #include "systick.h"
+#include "task.h"
 
 enum {
+    STACK_SIZE        = 128U,  ///< Amount of words in the task stack
+    TASK_LOW_PRIORITY = 8U,    ///< FreeRTOS number for a low priority task
     DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
     DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
     RESET_DELAY_MS    = 150U,  ///< Number of milliseconds to wait after reset
@@ -58,6 +63,7 @@ typedef enum {
 typedef errorCode_u (*screenState)(void);
 
 //utility functions
+static void        taskST7735S(void* argument);
 static inline void setDataCommandGPIO(DCgpio_e function);
 static inline void turnBacklightON(void);
 // static inline void turnBacklightOFF(void);
@@ -75,30 +81,35 @@ static errorCode_u stateWaitingForTXdone(void);
 static errorCode_u stateError(void);
 
 //State variables
-static SPI_TypeDef*    spiHandle      = (void*)0;         ///< SPI handle used with the SSD1306
-static DMA_TypeDef*    dmaHandle      = (void*)0;         ///< DMA handle used with the SSD1306
-static uint32_t        dmaChannelUsed = 0x00000000U;      ///< DMA channel used
-static screenState     state          = stateResetting;   ///< State machine current state
-static registerValue_t displayBuffer[FRAME_BUFFER_SIZE];  ///< Buffer used to send data to the display
-static systick_t       previousTick_ms = 0;               ///< Latest system tick value saved (in ms)
-static errorCode_u     result;                            ///< Buffer used to store function return codes
-static uint8_t         displayHeight      = 0;            ///< Current height of the display (depending on orientation)
-static uint8_t         displayWidth       = 0;            ///< Current width of the display (depending on orientation)
-static orientation_e   currentOrientation = NB_ORIENTATION;  ///< Current display orientation
-static uint32_t        dataTXRemaining    = 0;
+static volatile TaskHandle_t taskHandle     = NULL;             ///< handle of the FreeRTOS task
+static SPI_TypeDef*          spiHandle      = (void*)0;         ///< SPI handle used with the SSD1306
+static DMA_TypeDef*          dmaHandle      = (void*)0;         ///< DMA handle used with the SSD1306
+static uint32_t              dmaChannelUsed = 0x00000000U;      ///< DMA channel used
+static screenState           state          = stateResetting;   ///< State machine current state
+static registerValue_t       displayBuffer[FRAME_BUFFER_SIZE];  ///< Buffer used to send data to the display
+static systick_t             previousTick_ms = 0;               ///< Latest system tick value saved (in ms)
+static errorCode_u           result;                            ///< Buffer used to store function return codes
+static uint8_t               displayHeight      = 0;  ///< Current height of the display (depending on orientation)
+static uint8_t               displayWidth       = 0;  ///< Current width of the display (depending on orientation)
+static orientation_e         currentOrientation = NB_ORIENTATION;  ///< Current display orientation
+static uint32_t              dataTXRemaining    = 0;
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
 
 /**
- * @brief Initialise the ST7735S display
+ * @brief Create the ST7735S FreeRTOS task
  *
  * @param handle        SPI handle used
  * @param dma           DMA handle used
  * @param dmaChannel    DMA channel used to send data to the ST7735S
  * @return Success
  */
-errorCode_u st7735sInitialise(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dmaChannel) {
+errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dmaChannel) {
+    static StackType_t  taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
+    static StaticTask_t taskState             = {0};  ///< Task state variables
+
+    //save the SPI handle and DMA channel used by the ST7735S
     spiHandle      = handle;
     dmaHandle      = dma;
     dmaChannelUsed = dmaChannel;
@@ -111,7 +122,29 @@ errorCode_u st7735sInitialise(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dm
     LL_DMA_ConfigAddresses(dmaHandle, dmaChannelUsed, (uint32_t)&displayBuffer, LL_SPI_DMA_GetRegAddr(spiHandle),
                            LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
 
+    //create the static task
+    taskHandle =
+        xTaskCreateStatic(taskST7735S, "ST7735S task", STACK_SIZE, NULL, TASK_LOW_PRIORITY, taskStack, &taskState);
+    if(!taskHandle) {
+        Error_Handler();
+    }
+
     return (ERR_SUCCESS);
+}
+
+/**
+ * @brief Run the state machine
+ *
+ * @return Return code of the current state
+ */
+static void taskST7735S(void* argument) {
+    UNUSED(argument);
+
+    while(1) {
+        if(isError((*state)())) {
+            Error_Handler();
+        }
+    }
 }
 
 /**
@@ -369,15 +402,6 @@ static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t Xstart, 
     dataTXRemaining = VERDANA_NB_COLUMNS * VERDANA_NB_ROWS * sizeof(pixel_t);
     state           = stateStartingDMATX;
     return (ERR_SUCCESS);
-}
-
-/**
- * @brief Run the state machine
- *
- * @return Return code of the current state
- */
-errorCode_u st7735sUpdate(void) {
-    return ((*state)());
 }
 
 /********************************************************************************************************************************************/
