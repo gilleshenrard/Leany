@@ -4,12 +4,12 @@
  * @date 17/07/2024
  */
 #include "buttons.h"
-#include <main.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "main.h"
 #include "stm32f103xb.h"
+#include "stm32f1xx_hal.h"
 #include "stm32f1xx_ll_gpio.h"
-#include "systick.h"
 
 _Static_assert((bool)(NB_BUTTONS <= UINT8_MAX), "The application supports maximum 255 buttons");
 
@@ -45,10 +45,10 @@ typedef struct {
  * @brief Structure holding all the timers used by the buttons
  */
 typedef struct {
-    systick_t debouncing_ms;   ///< Timer used for debouncing (in ms)
-    systick_t holding_ms;      ///< Timer used to detect if a button is held down (in ms)
-    systick_t risingEdge_ms;   ///< Timer used to detect a rising edge (in ms)
-    systick_t fallingEdge_ms;  ///< Timer used to detect a falling edge (in ms)
+    uint32_t debouncing_ms;   ///< Timer used for debouncing (in ms)
+    uint32_t holding_ms;      ///< Timer used to detect if a button is held down (in ms)
+    uint32_t risingEdge_ms;   ///< Timer used to detect a rising edge (in ms)
+    uint32_t fallingEdge_ms;  ///< Timer used to detect a falling edge (in ms)
 } __attribute__((aligned(BUTTON_STRUCT_ALIGNMENT))) gpioTimer_t;
 
 static gpioTimer_t buttonsTimers[NB_BUTTONS];  ///< Array of timers used by the buttons
@@ -68,7 +68,7 @@ static button_t buttons[NB_BUTTONS] = {
 /**
  * @brief Run each button's state machine
  */
-void buttonsUpdate() {
+void buttonsUpdate(void) {
     for(uint8_t i = 0; i < (uint8_t)NB_BUTTONS; i++) {
         (*buttons[i].state)(i);
     }
@@ -132,8 +132,8 @@ uint8_t buttonHasRisingEdge(button_e button) {
         return 0;
     }
 
-    uint8_t tmp = !isTimeElapsed(buttonsTimers[button].risingEdge_ms, EDGEDETECTION_TIME_MS);
-    tmp &= (systick_t)(getSystick() > EDGEDETECTION_TIME_MS);
+    uint8_t tmp = ((HAL_GetTick() - buttonsTimers[button].risingEdge_ms) < EDGEDETECTION_TIME_MS);
+    tmp &= (uint32_t)(HAL_GetTick() > EDGEDETECTION_TIME_MS);
     buttonsTimers[button].risingEdge_ms = 0;
 
     return (tmp > 0);
@@ -152,8 +152,8 @@ uint8_t buttonHasFallingEdge(button_e button) {
         return 0;
     }
 
-    uint8_t tmp = !isTimeElapsed(buttonsTimers[button].fallingEdge_ms, EDGEDETECTION_TIME_MS);
-    tmp &= (systick_t)(getSystick() > EDGEDETECTION_TIME_MS);
+    uint8_t tmp = ((HAL_GetTick() - buttonsTimers[button].fallingEdge_ms) < EDGEDETECTION_TIME_MS);
+    tmp &= (uint32_t)(HAL_GetTick() > EDGEDETECTION_TIME_MS);
     buttonsTimers[button].fallingEdge_ms = 0;
 
     return (tmp > 0);
@@ -170,17 +170,17 @@ uint8_t buttonHasFallingEdge(button_e button) {
 static void stReleased(button_e button) {
     //if button released, restart debouncing timer
     if(LL_GPIO_IsInputPinSet(buttons[button].port, buttons[button].pin)) {
-        buttonsTimers[button].debouncing_ms = getSystick();
+        buttonsTimers[button].debouncing_ms = HAL_GetTick();
     }
 
     //if button not pressed for long enough, exit
-    if(!isTimeElapsed(buttonsTimers[button].debouncing_ms, DEBOUNCE_TIME_MS)) {
+    if((HAL_GetTick() - buttonsTimers[button].debouncing_ms) < DEBOUNCE_TIME_MS) {
         return;
     }
 
     //set the timer during which rising edge can be read, and get to pressed state
-    buttonsTimers[button].risingEdge_ms = getSystick();
-    buttonsTimers[button].holding_ms    = getSystick();
+    buttonsTimers[button].risingEdge_ms = HAL_GetTick();
+    buttonsTimers[button].holding_ms    = HAL_GetTick();
     buttons[button].state               = stPressed;
 }
 
@@ -192,21 +192,21 @@ static void stReleased(button_e button) {
 static void stPressed(button_e button) {
     //if button pressed, restart debouncing timer
     if(!LL_GPIO_IsInputPinSet(buttons[button].port, buttons[button].pin)) {
-        buttonsTimers[button].debouncing_ms = getSystick();
+        buttonsTimers[button].debouncing_ms = HAL_GetTick();
 
         //if button maintained for long enough, get to held down state
-        if(isTimeElapsed(buttonsTimers[button].holding_ms, HOLDING_TIME_MS)) {
+        if((HAL_GetTick() - buttonsTimers[button].holding_ms) >= HOLDING_TIME_MS) {
             buttons[button].state = stHeldDown;
         }
     }
 
     //if button not released for long enough, exit
-    if(!isTimeElapsed(buttonsTimers[button].debouncing_ms, DEBOUNCE_TIME_MS)) {
+    if((HAL_GetTick() - buttonsTimers[button].debouncing_ms) < DEBOUNCE_TIME_MS) {
         return;
     }
 
     //set the timer during which falling edge can be read, and get to pressed state
-    buttonsTimers[button].fallingEdge_ms = getSystick();
+    buttonsTimers[button].fallingEdge_ms = HAL_GetTick();
     buttons[button].state                = stReleased;
 }
 
@@ -218,15 +218,15 @@ static void stPressed(button_e button) {
 static void stHeldDown(button_e button) {
     //if button pressed, restart debouncing timer
     if(!LL_GPIO_IsInputPinSet(buttons[button].port, buttons[button].pin)) {
-        buttonsTimers[button].debouncing_ms = getSystick();
+        buttonsTimers[button].debouncing_ms = HAL_GetTick();
     }
 
     //if button not released for long enough, exit
-    if(!isTimeElapsed(buttonsTimers[button].debouncing_ms, DEBOUNCE_TIME_MS)) {
+    if((HAL_GetTick() - buttonsTimers[button].debouncing_ms) < DEBOUNCE_TIME_MS) {
         return;
     }
 
     //set the timer during which falling edge can be read, and get to pressed state
-    buttonsTimers[button].fallingEdge_ms = getSystick();
+    buttonsTimers[button].fallingEdge_ms = HAL_GetTick();
     buttons[button].state                = stReleased;
 }
