@@ -24,7 +24,6 @@
 #include "stm32f103xb.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
-#include "systick.h"
 #include "task.h"
 
 #define ANGLE_DELTA_MINIMUM       0.05F        ///< Minimum value for angle differences to be noticed
@@ -94,9 +93,6 @@ static errorCode_u readRegisters(LSM6DSOregister_e firstRegister, uint8_t value[
 static inline uint8_t dataReady(void);
 static void           complementaryFilter(const float accelerometer_mG[], const float gyroscope_radps[],
                                           float filteredAngles_rad[]);
-
-//global variables
-static systick_t lsm6dsoTimer_ms = 0;  ///< Timer used in various states of the LSM6DSO (in ms)
 
 //state variables
 static volatile TaskHandle_t taskHandle = NULL;
@@ -508,26 +504,19 @@ errorCode_u stateIgnoringSamples(void) {
  * @retval 1 No measurement received in a timely manner
  * @retval 2 Error while reading the status register value
  */
-static errorCode_u stateMeasuring() {
+static errorCode_u stateMeasuring(void) {
     rawValues_u    LSBvalues = {0};              ///< Buffer in which read values will be stored
     float          accelerometer_mG[NB_AXIS];    ///< Accelerometer values in [mG]
     float          gyroscope_radps[NB_AXIS];     ///< Gyroscope values in [rad/s]
     int16_t*       valueIterator    = (void*)0;  ///< Pointer used to browse through read values
     static int16_t previousTemp_LSB = 0;         ///< Previously read temperature LSB values
 
-    //if 1s elapsed without getting any data ready interrupt, error
-    if(isTimeElapsed(lsm6dsoTimer_ms, TIMEOUT_MS)) {
+    //wait for measurements to be ready
+    uint32_t waitTimeOK = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000U));
+    if(!waitTimeOK) {
         state = stateError;
         return (createErrorCode(MEASURING, 1, ERR_CRITICAL));
     }
-
-    //if no interrupt occurred, exit
-    if(!dataReady()) {
-        return (ERR_SUCCESS);
-    }
-
-    //reset the timer
-    lsm6dsoTimer_ms = getSystick();
 
     //read all temp/accelerometer/gyroscope values
     result = readRegisters(OUT_TEMP_L, LSBvalues.registers8bits, NB_REGISTERS_TO_READ);
