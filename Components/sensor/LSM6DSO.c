@@ -21,6 +21,7 @@
 #include "LSM6DSO_registers.h"
 #include "errorstack.h"
 #include "main.h"
+#include "semphr.h"
 #include "stm32f103xb.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
@@ -95,12 +96,13 @@ static void           complementaryFilter(const float accelerometer_mG[], const 
                                           float filteredAngles_rad[]);
 
 //state variables
-static volatile TaskHandle_t taskHandle = NULL;
-static SPI_TypeDef*          spiHandle  = (void*)0;             ///< SPI handle used by the LSM6DSO device
-static lsm6dsoState          state      = stateStartup;         ///< State machine current state
-static errorCode_u           result;                            ///< Variables used to store error codes
-static float                 anglesAtZeroing_rad[NB_AXIS];      ///< Accelerometer values at time of zeroing in [m/s²]
-static float latestAngles_rad[NB_AXIS - 1] = {0.0F, 0.0F};      ///< Latest angles measured and filtered in [rad]
+static volatile TaskHandle_t taskHandle  = NULL;            ///< handle of the FreeRTOS task
+static SemaphoreHandle_t     anglesMutex = NULL;            ///< handle of the mutex used to protect angles measurements
+static SPI_TypeDef*          spiHandle   = (void*)0;        ///< SPI handle used by the LSM6DSO device
+static lsm6dsoState          state       = stateStartup;    ///< State machine current state
+static errorCode_u           result;                        ///< Variables used to store error codes
+static float                 anglesAtZeroing_rad[NB_AXIS];  ///< Accelerometer values at time of zeroing in [m/s²]
+static float latestAngles_rad[NB_AXIS - 1] = {0.0F, 0.0F};  ///< Latest angles measured and filtered in [rad]
 float        temperature_degC              = BASE_TEMPERATURE;  ///< Temperature of the LSM6DSO in [°C]
 
 /********************************************************************************************************************************************/
@@ -128,8 +130,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
  * @param handle SPI handle used by the LSM6DSO
  */
 void createLSM6DSOTask(const SPI_TypeDef* handle) {
-    static StackType_t  taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
-    static StaticTask_t taskState             = {0};  ///< Task state variables
+    static StackType_t       taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
+    static StaticTask_t      taskState             = {0};  ///< Task state variables
+    static StaticSemaphore_t measureMutexState     = {0};  ///< ADC value mutex state variables
 
     //save the SPI handle used by LSM6DSO and disable SPI1
     spiHandle = (SPI_TypeDef*)handle;
@@ -139,6 +142,12 @@ void createLSM6DSOTask(const SPI_TypeDef* handle) {
     taskHandle =
         xTaskCreateStatic(taskLSM6DSO, "LSM6DSO task", STACK_SIZE, NULL, TASK_LOW_PRIORITY, taskStack, &taskState);
     if(!taskHandle) {
+        Error_Handler();
+    }
+
+    //create a semaphore to protect mearurements
+    anglesMutex = xSemaphoreCreateMutexStatic(&measureMutexState);
+    if(!anglesMutex) {
         Error_Handler();
     }
 }
@@ -294,15 +303,19 @@ uint8_t lsm6dsoHasChanged(axis_e axis) {
  * @return Angle with the Z axis
  */
 int16_t getAngleDegreesTenths(axis_e axis) {
+    xSemaphoreTake(anglesMutex, portMAX_DELAY);
     return ((int16_t)((latestAngles_rad[axis] + anglesAtZeroing_rad[axis]) * RADIANS_TO_DEGREES_TENTHS));
+    xSemaphoreGive(anglesMutex);
 }
 
 /**
  * @brief Set the measurements in relative mode and zero down the values
  */
 void lsm6dsoZeroDown(void) {
+    xSemaphoreTake(anglesMutex, portMAX_DELAY);
     anglesAtZeroing_rad[X_AXIS] = -latestAngles_rad[X_AXIS];
     anglesAtZeroing_rad[Y_AXIS] = -latestAngles_rad[Y_AXIS];
+    xSemaphoreGive(anglesMutex);
 }
 
 /**
@@ -373,6 +386,9 @@ void complementaryFilter(const float accelerometer_mG[], const float gyroscope_r
     AccelEstimatedX_rad = asinf(accelerometer_mG[X_AXIS] / GRAVITATION_MG);
     AccelEstimatedY_rad = atanf(accelerometer_mG[Y_AXIS] / accelerometer_mG[Z_AXIS]);
 
+    //take the measurements mutex before updating angle values
+    xSemaphoreTake(anglesMutex, portMAX_DELAY);
+
     //Transform gyroscope rates (reference is the solid body) to Euler rates (reference is Earth)
     eulerAngleRateX_radps =
         gyroscope_radps[X_AXIS]
@@ -389,6 +405,9 @@ void complementaryFilter(const float accelerometer_mG[], const float gyroscope_r
     filteredAngles_rad[Y_AXIS] =
         ((1.0F - alpha) * (filteredAngles_rad[Y_AXIS] + (eulerAngleRateY_radps * dtPeriod_sec)))
         + (alpha * AccelEstimatedY_rad);
+
+    //release the mutex
+    xSemaphoreGive(anglesMutex);
 }
 
 /**
