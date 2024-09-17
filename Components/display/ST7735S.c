@@ -39,8 +39,7 @@ typedef enum {
     FILL_BACKGROUND,  ///< printBackground()
     PRINT_CHAR,       ///< printCharacter()
     ORIENT,           ///< st7735sSetOrientation()
-    RESETTING,        ///< stateResetting()
-    WAKING,           ///< stateExitingSleep()
+    STARTUP,          ///< stateStartup()
     CONFIG,           ///< stateConfiguring()
     WAITING_DMA_RDY,  ///< stateWaitingForTXdone()
 } SSD1306functionCodes_e;
@@ -406,10 +405,11 @@ static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t Xstart, 
 /********************************************************************************************************************************************/
 
 /**
- * @brief State in which a software reset is requested
+ * @brief State in which a software reset and a sleepout are requested
  * 
  * @return Success
- * @retval 1 Error while transmitting the command
+ * @retval 1 Error while transmitting the software reset command
+ * @retval 2 Error while transmitting the sleep out command
  */
 static errorCode_u stateStartup(void) {
     static const uint8_t RESET_DELAY_MS    = 150U;  ///< Number of milliseconds to wait after reset
@@ -419,7 +419,7 @@ static errorCode_u stateStartup(void) {
     result = sendCommand(SWRESET, NULL, 0);
     if(isError(result)) {
         state = stateError;
-        return pushErrorCode(result, RESETTING, 1);
+        return pushErrorCode(result, STARTUP, 1);
     }
 
     //wait for a while after software reset
@@ -429,7 +429,7 @@ static errorCode_u stateStartup(void) {
     result = sendCommand(SLPOUT, NULL, 0);
     if(isError(result)) {
         state = stateError;
-        return pushErrorCode(result, WAKING, 1);
+        return pushErrorCode(result, STARTUP, 2);
     }
 
     //wait for a while after sleepout
