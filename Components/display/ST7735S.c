@@ -26,8 +26,6 @@ enum {
     TASK_LOW_PRIORITY = 8U,    ///< FreeRTOS number for a low priority task
     DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
     DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
-    RESET_DELAY_MS    = 150U,  ///< Number of milliseconds to wait after reset
-    SLEEPOUT_DELAY_MS = 255U,  ///< Number of milliseconds to wait sleep out
     SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
     FRAME_BUFFER_SIZE = (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 5U,  ///< Size of the frame buffer in bytes
 };
@@ -72,7 +70,7 @@ static errorCode_u printBackground(void);
 static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t Xstart, uint8_t Ystart);
 
 //state machine
-static errorCode_u stateResetting(void);
+static errorCode_u stateStartup(void);
 static errorCode_u stateConfiguring(void);
 static errorCode_u stateExitingSleep(void);
 static errorCode_u stateStartingDMATX(void);
@@ -85,7 +83,7 @@ static volatile TaskHandle_t taskHandle     = NULL;             ///< handle of t
 static SPI_TypeDef*          spiHandle      = (void*)0;         ///< SPI handle used with the SSD1306
 static DMA_TypeDef*          dmaHandle      = (void*)0;         ///< DMA handle used with the SSD1306
 static uint32_t              dmaChannelUsed = 0x00000000U;      ///< DMA channel used
-static screenState           state          = stateResetting;   ///< State machine current state
+static screenState           state          = stateStartup;     ///< State machine current state
 static registerValue_t       displayBuffer[FRAME_BUFFER_SIZE];  ///< Buffer used to send data to the display
 static systick_t             previousTick_ms = 0;               ///< Latest system tick value saved (in ms)
 static errorCode_u           result;                            ///< Buffer used to store function return codes
@@ -413,7 +411,10 @@ static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t Xstart, 
  * @return Success
  * @retval 1 Error while transmitting the command
  */
-static errorCode_u stateResetting(void) {
+static errorCode_u stateStartup(void) {
+    static const uint8_t RESET_DELAY_MS    = 150U;  ///< Number of milliseconds to wait after reset
+    static const uint8_t SLEEPOUT_DELAY_MS = 255U;  ///< Number of milliseconds to wait sleep out
+
     //send the reset command and, if error, exit
     result = sendCommand(SWRESET, NULL, 0);
     if(isError(result)) {
@@ -421,23 +422,8 @@ static errorCode_u stateResetting(void) {
         return pushErrorCode(result, RESETTING, 1);
     }
 
-    //save the current systick and get to waiting state
-    previousTick_ms = getSystick();
-    state           = stateExitingSleep;
-    return (ERR_SUCCESS);
-}
-
-/**
- * @brief State in which a sleep out is requested
- * 
- * @return Success
- * @retval 1 Error while transmitting the command
- */
-static errorCode_u stateExitingSleep(void) {
-    //if reset timer not elapsed yet, exit
-    if(!isTimeElapsed(previousTick_ms, RESET_DELAY_MS)) {
-        return (ERR_SUCCESS);
-    }
+    //wait for a while after software reset
+    vTaskDelay(pdMS_TO_TICKS(RESET_DELAY_MS));
 
     //send the reset command and, if error, exit
     result = sendCommand(SLPOUT, NULL, 0);
@@ -446,8 +432,11 @@ static errorCode_u stateExitingSleep(void) {
         return pushErrorCode(result, WAKING, 1);
     }
 
-    previousTick_ms = getSystick();
-    state           = stateConfiguring;
+    //wait for a while after sleepout
+    vTaskDelay(pdMS_TO_TICKS(SLEEPOUT_DELAY_MS));
+
+    //save the current systick and get to waiting state
+    state = stateConfiguring;
     return (ERR_SUCCESS);
 }
 
@@ -459,11 +448,6 @@ static errorCode_u stateExitingSleep(void) {
  * @retval 2 Error while setting the screen orientation
  */
 static errorCode_u stateConfiguring(void) {
-    //if sleep out timer not elapsed yet, exit
-    if(!isTimeElapsed(previousTick_ms, SLEEPOUT_DELAY_MS)) {
-        return (ERR_SUCCESS);
-    }
-
     //execute all configuration commands
     for(uint8_t command = 0; command < (uint8_t)ST7735_NB_COMMANDS; command++) {
         result =
