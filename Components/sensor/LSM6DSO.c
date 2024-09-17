@@ -90,9 +90,8 @@ static void        taskLSM6DSO(void* argument);
 static errorCode_u writeRegister(LSM6DSOregister_e registerNumber, uint8_t value);
 static errorCode_u readRegisters(LSM6DSOregister_e firstRegister, uint8_t value[], uint8_t size);
 
-static inline uint8_t dataReady(void);
-static void           complementaryFilter(const float accelerometer_mG[], const float gyroscope_radps[],
-                                          float filteredAngles_rad[]);
+static void complementaryFilter(const float accelerometer_mG[], const float gyroscope_radps[],
+                                float filteredAngles_rad[]);
 
 //state variables
 static volatile TaskHandle_t taskHandle  = NULL;            ///< handle of the FreeRTOS task
@@ -407,16 +406,6 @@ void complementaryFilter(const float accelerometer_mG[], const float gyroscope_r
 
     //release the mutex
     xSemaphoreGive(anglesMutex);
-}
-
-/**
- * @brief Check if an INT1 event occurred
- * 
- * @retval 0 INT1 did not occur
- * @retval 1 INT1 occurred
- */
-static inline uint8_t dataReady(void) {
-    return (uint8_t)LL_GPIO_IsInputPinSet(LSM6DSO_INT1_GPIO_Port, LSM6DSO_INT1_Pin);
 }
 
 /********************************************************************************************************************************************/
