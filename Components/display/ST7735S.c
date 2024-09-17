@@ -8,18 +8,19 @@
  */
 #include "ST7735S.h"
 #include <stdint.h>
-#include <stm32f1xx_hal.h>
-#include <stm32f1xx_hal_def.h>
 #include "FreeRTOS.h"
 #include "ST7735_initialisation.h"
 #include "ST7735_registers.h"
 #include "errorstack.h"
 #include "icons.h"
 #include "main.h"
+#include "stm32f1xx_hal.h"
+#include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_ll_dma.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
 #include "task.h"
+
 
 enum {
     STACK_SIZE        = 128U,  ///< Amount of words in the task stack

@@ -12,17 +12,16 @@
  */
 #include "LSM6DSO.h"
 #include <math.h>
-#include <portmacro.h>
-#include <projdefs.h>
 #include <stdint.h>
-#include <stm32f1xx_hal.h>
-#include <stm32f1xx_hal_def.h>
 #include "FreeRTOS.h"
 #include "LSM6DSO_registers.h"
 #include "errorstack.h"
 #include "main.h"
+#include "projdefs.h"
 #include "semphr.h"
 #include "stm32f103xb.h"
+#include "stm32f1xx_hal.h"
+#include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
 #include "task.h"
