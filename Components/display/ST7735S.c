@@ -8,6 +8,7 @@
  */
 #include "ST7735S.h"
 #include <stdint.h>
+#include <stm32f1xx_hal.h>
 #include <stm32f1xx_hal_def.h>
 #include "FreeRTOS.h"
 #include "ST7735_initialisation.h"
@@ -188,18 +189,18 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
     }
 
     //set command pin and enable SPI
-    systick_t tickAtStart_ms = getSystick();
+    uint32_t SPItick = HAL_GetTick();
     setDataCommandGPIO(COMMAND);
     LL_SPI_Enable(spiHandle);
 
     //send the command byte and wait for the transaction to be done
     LL_SPI_TransmitData8(spiHandle, (uint8_t)regNumber);
-    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
+    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {}
 
     //send the parameters
     setDataCommandGPIO(DATA);
     uint8_t* iterator = (uint8_t*)parameters;
-    while(nbParameters && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {
+    while(nbParameters && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {
         //wait for the previous byte to be done, then send the next one
         while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
         if(!isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {
@@ -211,14 +212,14 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
     }
 
     //wait for transaction to be finished and clear Overrun flag
-    while(LL_SPI_IsActiveFlag_BSY(spiHandle) && !isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {}
+    while(LL_SPI_IsActiveFlag_BSY(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {}
     LL_SPI_ClearFlag_OVR(spiHandle);
 
     //disable SPI and return status
     LL_SPI_Disable(spiHandle);
 
     //if timeout, error
-    if(isTimeElapsed(tickAtStart_ms, SPI_TIMEOUT_MS)) {
+    if(((HAL_GetTick() - SPItick) >= SPI_TIMEOUT_MS)) {
         return (createErrorCode(SEND_CMD, 4, ERR_WARNING));
     }
 
