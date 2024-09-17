@@ -21,7 +21,6 @@
 #include "stm32f1xx_ll_spi.h"
 #include "task.h"
 
-
 enum {
     STACK_SIZE        = 128U,  ///< Amount of words in the task stack
     TASK_LOW_PRIORITY = 8U,    ///< FreeRTOS number for a low priority task
@@ -139,7 +138,8 @@ static void taskST7735S(void* argument) {
     UNUSED(argument);
 
     while(1) {
-        if(isError((*state)())) {
+        result = (*state)();
+        if(isError(result)) {
             Error_Handler();
         }
     }
@@ -433,12 +433,16 @@ static errorCode_u stateConfiguring(void) {
         *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL & BYTE_MASK);
     }
 
-    setWindow(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    result = setWindow(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    if(isError(result)) {
+        state = stateError;
+        return pushErrorCode(result, CONFIG, 3);
+    }
 
     dataTXRemaining = (DISPLAY_HEIGHT + 2) * (DISPLAY_WIDTH + 1) * sizeof(pixel_t);
     do {
-        sendData(&dataTXRemaining);
-    } while(dataTXRemaining);
+        result = sendData(&dataTXRemaining);
+    } while(dataTXRemaining && !isError(result));
 
     state = stateIdle;
     return (ERR_SUCCESS);
