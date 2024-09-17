@@ -27,7 +27,8 @@ enum {
     DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
     DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
     SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
-    FRAME_BUFFER_SIZE = (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 5U,  ///< Size of the frame buffer in bytes
+    FRAME_BUFFER_SIZE =
+        (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 10U,  ///< Size of the frame buffer in bytes
 };
 
 /**
