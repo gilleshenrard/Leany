@@ -111,6 +111,7 @@ int main(void)
   LL_SYSTICK_EnableIT();
   createLSM6DSOTask(SPI1);
   createST7735Stask(SPI2, DMA1, LL_DMA_CHANNEL_5);
+  createButtonsTask();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -130,9 +131,6 @@ int main(void)
   {
     //reset the watchdog
     LL_IWDG_ReloadCounter(IWDG);
-
-    //update the buttons' state machines
-    buttonsUpdate();
 
     //if zero button is pressed, zero down measurements
     if(buttonHasRisingEdge(ZERO)){
