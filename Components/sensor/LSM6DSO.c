@@ -2,7 +2,7 @@
  * @file LSM6DSO.c
  * @brief Implement the LSM6DSO MEMS sensor communication
  * @author Gilles Henrard
- * @date 05/08/2024
+ * @date 18/09/2024
  *
  * @note Additional information can be found in :
  *   - Datasheet : https://www.st.com/resource/en/datasheet/lsm6dso.pdf
@@ -17,6 +17,7 @@
 #include "LSM6DSO_registers.h"
 #include "errorstack.h"
 #include "main.h"
+#include "portmacro.h"
 #include "projdefs.h"
 #include "semphr.h"
 #include "stm32f103xb.h"
@@ -113,10 +114,14 @@ float        temperature_degC              = BASE_TEMPERATURE;  ///< Temperature
 void lsm6dsoInterruptTriggered(uint8_t interruptPin) {
     BaseType_t hasWoken = 0;
 
+    vPortEnterCritical();
+
     //if INT1, notify the LSM6DSO task
     if(interruptPin == 1) {
         vTaskNotifyGiveFromISR(taskHandle, &hasWoken);
     }
+
+    vPortExitCritical();
 
     portYIELD_FROM_ISR(hasWoken);
 }
