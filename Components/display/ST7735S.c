@@ -95,6 +95,12 @@ static uint32_t              dataTXRemaining    = 0;
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
 
+void st7735sDMAinterruptHandler(void) {
+    BaseType_t hasWoken = 0;
+    vTaskNotifyGiveFromISR(taskHandle, &hasWoken);
+    portYIELD_FROM_ISR(hasWoken);
+}
+
 /**
  * @brief Create the ST7735S FreeRTOS task
  *
