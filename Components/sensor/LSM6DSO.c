@@ -47,7 +47,7 @@ enum {
 typedef enum {
     READ_REGISTERS = 1,  ///< readRegisters() function
     WRITE_REGISTER,      ///< writeRegister() function
-    CHECK_DEVICE_ID,     ///< stateWaitingDeviceID() state
+    CHECK_DEVICE_ID,     ///< stateStartup() state
     CONFIGURING,         ///< stateConfiguring() state
     DROPPING,            ///< stateIgnoringSamples() state
     MEASURING,           ///< stMeasuring() state
@@ -79,13 +79,12 @@ typedef union {
 typedef errorCode_u (*lsm6dsoState)(void);
 
 //machine state
-static errorCode_u stateWaitingBoot();
-static errorCode_u stateWaitingDeviceID();
-static errorCode_u stateConfiguring();
-static errorCode_u stateIgnoringSamples();
-static errorCode_u stateMeasuring();
-static errorCode_u stateHoldingValues();
-static errorCode_u stateError();
+static errorCode_u stateStartup(void);
+static errorCode_u stateConfiguring(void);
+static errorCode_u stateIgnoringSamples(void);
+static errorCode_u stateMeasuring(void);
+static errorCode_u stateHoldingValues(void);
+static errorCode_u stateError(void);
 
 //registers read/write functions
 static void        taskLSM6DSO(void* argument);
@@ -394,53 +393,30 @@ static inline uint8_t dataReady(void) {
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
 
-/**
- * @brief State in which the program waits for the LSM6DSO to boot up
- * 
- * @return Success
- */
-static errorCode_u stateWaitingBoot() {
-    //if timer elapsed, reset it and get to next state
-    if(isTimeElapsed(lsm6dsoTimer_ms, BOOT_TIME_MS)) {
-        lsm6dsoTimer_ms = getSystick();
-        state           = stateWaitingDeviceID;
-    }
-
-    return (ERR_SUCCESS);
-}
-
-/**
- * @brief State during which the Who Am I ID is checked
- * @attention This takes the 10ms boot time into account
- * @note If no correct manufacturer ID is read within 1 second, a timeout occurs
- * 
- * @retval 0 Success
- * @retval 1 Timeout while reading the manufacturer ID
- * @retval 2 Error while sending the read request
- */
-static errorCode_u stateWaitingDeviceID() {
+static errorCode_u stateStartup(void) {
     uint8_t deviceID = 0;
 
-    //if 1s elapsed without reading the correct vendor ID, go error
-    if(isTimeElapsed(lsm6dsoTimer_ms, TIMEOUT_MS)) {
+    //wait for a while for the sensor to boot properly
+    vTaskDelay(pdMS_TO_TICKS(10U));
+
+    //attempt to read a correct device ID for max. 1 second
+    uint32_t firstTick = HAL_GetTick();
+    do {
+        result = readRegisters(WHO_AM_I, &deviceID, 1);
+        if(isError(result)) {
+            return (pushErrorCode(result, CHECK_DEVICE_ID, 2));
+        }
+    } while((deviceID != LSM6_WHOAMI) && ((HAL_GetTick() - firstTick) < TIMEOUT_MS));
+
+    //if device ID still incorrect, error
+    if(deviceID != LSM6_WHOAMI) {
         state = stateError;
         return (createErrorCode(CHECK_DEVICE_ID, 1, ERR_CRITICAL));
     }
 
-    //if unable to read device ID, error
-    result = readRegisters(WHO_AM_I, &deviceID, 1);
-    if(isError(result)) {
-        return (pushErrorCode(result, CHECK_DEVICE_ID, 2));
-    }
-
-    //if invalid device ID, exit
-    if(deviceID != LSM6_WHOAMI) {
-        return (ERR_SUCCESS);
-    }
-
-    //reset timeout timer and get to next state
+    //go to configuration state next
     state = stateConfiguring;
-    return (ERR_SUCCESS);
+    return ERR_SUCCESS;
 }
 
 /**
