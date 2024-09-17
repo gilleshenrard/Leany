@@ -99,7 +99,6 @@ static void           complementaryFilter(const float accelerometer_mG[], const 
 static systick_t lsm6dsoTimer_ms = 0;  ///< Timer used in various states of the LSM6DSO (in ms)
 
 //state variables
-static uint8_t     accelerometerSamplesToIgnore = 0;  ///< Number of samples to ignore after change of ODR or power mode
 static volatile TaskHandle_t taskHandle = NULL;
 static SPI_TypeDef*          spiHandle  = (void*)0;             ///< SPI handle used by the LSM6DSO device
 static lsm6dsoState          state      = stateStartup;         ///< State machine current state
@@ -110,6 +109,22 @@ float        temperature_degC              = BASE_TEMPERATURE;  ///< Temperature
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
+
+/**
+ * @brief LSM6DSO INT1 and INT2 GPIO pins interrupt handler
+ * 
+ * @param GPIO_Pin Pin which triggered the interruption
+ */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    BaseType_t hasWoken = 0;
+
+    //if INT1, notify the LSM6DSO task
+    if(GPIO_Pin == LSM6DSO_INT1_Pin) {
+        vTaskNotifyGiveFromISR(taskHandle, &hasWoken);
+    }
+
+    portYIELD_FROM_ISR(hasWoken);
+}
 
 /**
  * @brief Create a LSM6DSO FreeRTOS static task
@@ -425,7 +440,6 @@ static errorCode_u stateStartup(void) {
  * @retval 0 Success
  * @retval 1 Error while writing a register
  */
-    const uint8_t         AXL_SAMPLES_TO_IGNORE = 2U;  ///< Number of samples to drop (see stateIgnoringSamples())
 static errorCode_u stateConfiguring(void) {
     const registerValue_t initialisationArray[NB_INIT_REG] = {
         {   CTRL3_C, LSM6_SOFTWARE_RESET | LSM6_INT_ACTIVE_LOW}, //reboot MEMS memory and reset software
@@ -448,11 +462,7 @@ static errorCode_u stateConfiguring(void) {
         }
     }
 
-    //set the number of samples to ignore after changing ODR and power mode
-    accelerometerSamplesToIgnore = AXL_SAMPLES_TO_IGNORE;
-
-    lsm6dsoTimer_ms = getSystick();
-    state           = stateIgnoringSamples;
+    state = stateIgnoringSamples;
     return (ERR_SUCCESS);
 }
 
@@ -462,35 +472,28 @@ static errorCode_u stateConfiguring(void) {
  * 
  * @retval 0 Success
  * @retval 1 No measurement received in a timely manner
- * @retval 2 Error while reading a register
  */
-errorCode_u stateIgnoringSamples() {
+errorCode_u stateIgnoringSamples(void) {
+    static const uint8_t AXL_SAMPLES_TO_IGNORE    = 2U;  ///< Number of samples to drop (see stateIgnoringSamples())
+    uint8_t              dummyValue               = 0;
+    uint8_t              remainingSamplesToIgnore = AXL_SAMPLES_TO_IGNORE;
+
+    uint32_t waitTimeOK = pdFALSE;
+    do {
+        //wait for a notification indicating a sample is ready
+        waitTimeOK = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000U));
+
+        //read an accelerometer value to reset the latched interrupt
+        readRegisters(OUTX_H_A, &dummyValue, 1);
+
+        //decrement the counter
+        remainingSamplesToIgnore--;
+    } while(remainingSamplesToIgnore && waitTimeOK);
+
     //if 1s elapsed without getting any data ready interrupt, error
-    if(isTimeElapsed(lsm6dsoTimer_ms, TIMEOUT_MS)) {
+    if(remainingSamplesToIgnore) {
         state = stateError;
         return (createErrorCode(DROPPING, 1, ERR_CRITICAL));
-    }
-
-    //if no interrupt occurred, exit
-    if(!dataReady()) {
-        return (ERR_SUCCESS);
-    }
-
-    //read an accelerometer value to reset the latched interrupt
-    uint8_t dummyValue = 0;
-    result             = readRegisters(OUTX_H_A, &dummyValue, 1);
-    if(isError(result)) {
-        state = stateError;
-        return (pushErrorCode(result, DROPPING, 2));
-    }
-
-    //reset the timer
-    lsm6dsoTimer_ms = getSystick();
-
-    //decrement the remaining amount to ignore and exit if still remaining
-    accelerometerSamplesToIgnore--;
-    if(accelerometerSamplesToIgnore) {
-        return (ERR_SUCCESS);
     }
 
     //get to measuring state
