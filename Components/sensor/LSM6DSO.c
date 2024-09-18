@@ -313,8 +313,10 @@ uint8_t lsm6dsoHasChanged(axis_e axis) {
  */
 int16_t getAngleDegreesTenths(axis_e axis) {
     xSemaphoreTake(anglesMutex, portMAX_DELAY);
-    return ((int16_t)((latestAngles_rad[axis] + anglesAtZeroing_rad[axis]) * RADIANS_TO_DEGREES_TENTHS));
+    float angle = latestAngles_rad[axis];
     xSemaphoreGive(anglesMutex);
+
+    return ((int16_t)((angle + anglesAtZeroing_rad[axis]) * RADIANS_TO_DEGREES_TENTHS));
 }
 
 /**
