@@ -14,6 +14,7 @@
 #include "errorstack.h"
 #include "icons.h"
 #include "main.h"
+#include "projdefs.h"
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_ll_dma.h"
@@ -279,8 +280,7 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     LL_SPI_EnableDMAReq_TX(spiHandle);
 
     //wait for measurements to be ready
-    uint32_t waitTimeOK = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SPI_TIMEOUT_MS));
-    if(!waitTimeOK) {
+    if(ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SPI_TIMEOUT_MS)) == pdFALSE) {
         state = stateError;
         return (createErrorCode(FILL_BACKGROUND, 1, ERR_CRITICAL));
     }
