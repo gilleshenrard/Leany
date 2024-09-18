@@ -36,14 +36,12 @@ enum {
  * @brief Enumeration of the function IDs of the SSD1306
  */
 typedef enum {
-    INIT = 0,         ///< st7735sInitialise()
-    SEND_CMD,         ///< sendCommand()
-    FILL_BACKGROUND,  ///< printBackground()
-    PRINT_CHAR,       ///< printCharacter()
-    ORIENT,           ///< st7735sSetOrientation()
-    STARTUP,          ///< stateStartup()
-    CONFIG,           ///< stateConfiguring()
-    WAITING_DMA_RDY,  ///< stateWaitingForTXdone()
+    SEND_CMD = 0,  ///< sendCommand()
+    SET_WINDOW,    ///< setWindow()
+    SEND_DATA,     ///< sendData()
+    ORIENT,        ///< st7735sSetOrientation()
+    STARTUP,       ///< stateStartup()
+    CONFIG,        ///< stateConfiguring()
 } SSD1306functionCodes_e;
 
 /**
@@ -167,14 +165,14 @@ static inline errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t widt
     uint8_t columns[4] = {0, Xstart, 0, Xstart + width};
     result             = sendCommand(CASET, columns, 4);
     if(isError(result)) {
-        return pushErrorCode(result, FILL_BACKGROUND, 1);
+        return pushErrorCode(result, SET_WINDOW, 1);
     }
 
     //set the data window rows count
     uint8_t rows[4] = {0, Ystart, 0, Ystart + height};
     result          = sendCommand(RASET, rows, 4);
     if(isError(result)) {
-        return pushErrorCode(result, FILL_BACKGROUND, 2);
+        return pushErrorCode(result, SET_WINDOW, 2);
     }
 
     return ERR_SUCCESS;
@@ -248,6 +246,15 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
     return (ERR_SUCCESS);
 }
 
+/**
+ * @brief Send pixel data to the display
+ * 
+ * @param dataRemaining Number of bytes remaining to send
+ * @return Success
+ * @retval 1 Timeout while sending write command
+ * @retval 2 Timeout while waiting for DMA TX done interrupt
+ * @retval 3 Error occurred durint DMA transmission
+ */
 //NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 static errorCode_u sendData(uint32_t* dataRemaining) {
     if(!dataRemaining) {
@@ -263,7 +270,7 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
     while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {}
     if(!LL_SPI_IsActiveFlag_TXE(spiHandle)) {
-        return pushErrorCode(result, FILL_BACKGROUND, 3);
+        return pushErrorCode(result, SEND_DATA, 1);
     }
 
     //clamp the data to send to max. the frameBuffer
@@ -282,7 +289,7 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     //wait for measurements to be ready
     if(ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SPI_TIMEOUT_MS)) == pdFALSE) {
         state = stateError;
-        return (createErrorCode(FILL_BACKGROUND, 1, ERR_CRITICAL));
+        return (createErrorCode(SEND_DATA, 2, ERR_CRITICAL));
     }
 
     //if DMA error, stop DMA and error
@@ -290,7 +297,7 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
         LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
         LL_SPI_Disable(spiHandle);
         state = stateError;
-        return createErrorCode(WAITING_DMA_RDY, 2, ERR_ERROR);
+        return createErrorCode(SEND_DATA, 3, ERR_ERROR);
     }
 
     *dataRemaining -= dataToSend;
