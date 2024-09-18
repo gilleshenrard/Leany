@@ -501,14 +501,14 @@ errorCode_u stateIgnoringSamples(void) {
     uint32_t waitTimeOK = pdFALSE;
     do {
         //wait for a notification indicating a sample is ready
-        waitTimeOK = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000U));
+        waitTimeOK = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(TIMEOUT_MS));
 
         //read an accelerometer value to reset the latched interrupt
         readRegisters(OUTX_H_A, &dummyValue, 1);
 
         //decrement the counter
         remainingSamplesToIgnore--;
-    } while(remainingSamplesToIgnore && waitTimeOK);
+    } while(remainingSamplesToIgnore && (waitTimeOK != pdFALSE));
 
     //if 1s elapsed without getting any data ready interrupt, error
     if(remainingSamplesToIgnore) {
@@ -536,8 +536,7 @@ static errorCode_u stateMeasuring(void) {
     static int16_t previousTemp_LSB = 0;         ///< Previously read temperature LSB values
 
     //wait for measurements to be ready
-    uint32_t waitTimeOK = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000U));
-    if(!waitTimeOK) {
+    if(ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(TIMEOUT_MS)) == pdFALSE) {
         state = stateError;
         return (createErrorCode(MEASURING, 1, ERR_CRITICAL));
     }
