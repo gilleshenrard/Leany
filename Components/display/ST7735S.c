@@ -274,7 +274,7 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {}
     if(!LL_SPI_IsActiveFlag_TXE(spiHandle)) {
         result = createErrorCode(SEND_DATA, 1, ERR_ERROR);
-        goto finalise;
+        goto finaliseDMA;
     }
 
     //set data GPIO and enable SPI
@@ -292,30 +292,28 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     //wait for measurements to be ready
     if(ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SPI_TIMEOUT_MS)) == pdFALSE) {
         result = createErrorCode(SEND_DATA, 2, ERR_ERROR);
-        goto finalise;
+        goto finaliseDMA;
     }
 
     //if DMA error, stop DMA and error
     if(LL_DMA_IsActiveFlag_TE5(dmaHandle)) {
         result = createErrorCode(SEND_DATA, 3, ERR_ERROR);
-        goto finalise;
+        goto finaliseDMA;
     }
 
     *dataRemaining -= dataToSend;
     if(*dataRemaining == 0) {
-        goto finalise;
+        goto finaliseDMA;
     }
 
-    goto retValue;
+    return ERR_SUCCESS;
 
-finalise:
+finaliseDMA:
     LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
     LL_SPI_Disable(spiHandle);
     if(isError(result)) {
         state = stateError;
     }
-
-retValue:
     return result;
 }
 
