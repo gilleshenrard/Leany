@@ -1,4 +1,5 @@
 /* USER CODE BEGIN Header */
+// clang-format off
 /**
   ******************************************************************************
   * File Name          : freertos.c
@@ -45,7 +46,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+extern TIM_HandleTypeDef htim1;
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 uint32_t defaultTaskBuffer[ 128 ];
@@ -69,14 +70,13 @@ unsigned long getRunTimeCounterValue(void);
 
 /* USER CODE BEGIN 1 */
 /* Functions needed when configGENERATE_RUN_TIME_STATS is on */
-__weak void configureTimerForRunTimeStats(void)
-{
-
+__weak void configureTimerForRunTimeStats(void) {
+  HAL_TIM_Base_Start_IT(&htim1);
 }
 
-__weak unsigned long getRunTimeCounterValue(void)
-{
-return 0;
+extern volatile unsigned long ulHighFrequencyTimerTicks;
+__weak unsigned long getRunTimeCounterValue(void) {
+  return ulHighFrequencyTimerTicks;
 }
 /* USER CODE END 1 */
 
