@@ -114,14 +114,14 @@ float        temperature_degC              = BASE_TEMPERATURE;  ///< Temperature
 void lsm6dsoInterruptTriggered(uint8_t interruptPin) {
     BaseType_t hasWoken = 0;
 
-    vPortEnterCritical();
+    // vPortEnterCritical();
 
     //if INT1, notify the LSM6DSO task
     if(interruptPin == 1) {
         vTaskNotifyGiveFromISR(taskHandle, &hasWoken);
     }
 
-    vPortExitCritical();
+    // vPortExitCritical();
 
     portYIELD_FROM_ISR(hasWoken);
 }
