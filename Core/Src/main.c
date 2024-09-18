@@ -108,7 +108,6 @@ int main(void)
   MX_SPI2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  LL_SYSTICK_EnableIT();
   createLSM6DSOTask(SPI1);
   createST7735Stask(SPI2, DMA1, LL_DMA_CHANNEL_5);
   createButtonsTask();
