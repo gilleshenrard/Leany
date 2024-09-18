@@ -291,10 +291,16 @@ uint8_t lsm6dsoHasChanged(axis_e axis) {
     static float previousAngles_rad[NB_AXIS - 1] = {0.0F, 0.0F};
     uint8_t      comparison                      = 0;
 
+    if(xSemaphoreTake(anglesMutex, pdMS_TO_TICKS(SPI_TIMEOUT_MS)) == pdFALSE) {
+        return 0;
+    }
+
     if(fabsf(latestAngles_rad[axis] - previousAngles_rad[axis]) > ANGLE_DELTA_MINIMUM) {
         previousAngles_rad[axis] = latestAngles_rad[axis];
         comparison               = 1;
     }
+
+    xSemaphoreGive(anglesMutex);
 
     return (comparison);
 }
@@ -315,9 +321,13 @@ int16_t getAngleDegreesTenths(axis_e axis) {
  * @brief Set the measurements in relative mode and zero down the values
  */
 void lsm6dsoZeroDown(void) {
-    xSemaphoreTake(anglesMutex, portMAX_DELAY);
+    if(xSemaphoreTake(anglesMutex, pdMS_TO_TICKS(SPI_TIMEOUT_MS)) == pdFALSE) {
+        return;
+    }
+
     anglesAtZeroing_rad[X_AXIS] = -latestAngles_rad[X_AXIS];
     anglesAtZeroing_rad[Y_AXIS] = -latestAngles_rad[Y_AXIS];
+
     xSemaphoreGive(anglesMutex);
 }
 
@@ -390,7 +400,9 @@ void complementaryFilter(const float accelerometer_mG[], const float gyroscope_r
     AccelEstimatedY_rad = atanf(accelerometer_mG[Y_AXIS] / accelerometer_mG[Z_AXIS]);
 
     //take the measurements mutex before updating angle values
-    xSemaphoreTake(anglesMutex, portMAX_DELAY);
+    if(xSemaphoreTake(anglesMutex, pdMS_TO_TICKS(SPI_TIMEOUT_MS)) == pdFALSE) {
+        return;
+    }
 
     //Transform gyroscope rates (reference is the solid body) to Euler rates (reference is Earth)
     eulerAngleRateX_radps =
