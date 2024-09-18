@@ -261,6 +261,9 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
         return ERR_SUCCESS;
     }
 
+    //clamp the data to send to max. the frameBuffer
+    uint32_t dataToSend = (*dataRemaining > FRAME_BUFFER_SIZE ? FRAME_BUFFER_SIZE : *dataRemaining);
+
     //set command pin and enable SPI
     uint32_t SPItick = HAL_GetTick();
     setDataCommandGPIO(COMMAND);
@@ -270,11 +273,9 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
     while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {}
     if(!LL_SPI_IsActiveFlag_TXE(spiHandle)) {
-        return pushErrorCode(result, SEND_DATA, 1);
+        result = createErrorCode(SEND_DATA, 1, ERR_ERROR);
+        goto finalise;
     }
-
-    //clamp the data to send to max. the frameBuffer
-    uint32_t dataToSend = (*dataRemaining > FRAME_BUFFER_SIZE ? FRAME_BUFFER_SIZE : *dataRemaining);
 
     //set data GPIO and enable SPI
     setDataCommandGPIO(DATA);
@@ -286,27 +287,36 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     LL_DMA_EnableChannel(dmaHandle, dmaChannelUsed);
     LL_SPI_EnableDMAReq_TX(spiHandle);
 
+    result = ERR_SUCCESS;
+
     //wait for measurements to be ready
     if(ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SPI_TIMEOUT_MS)) == pdFALSE) {
-        state = stateError;
-        return (createErrorCode(SEND_DATA, 2, ERR_CRITICAL));
+        result = createErrorCode(SEND_DATA, 2, ERR_ERROR);
+        goto finalise;
     }
 
     //if DMA error, stop DMA and error
     if(LL_DMA_IsActiveFlag_TE5(dmaHandle)) {
-        LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
-        LL_SPI_Disable(spiHandle);
-        state = stateError;
-        return createErrorCode(SEND_DATA, 3, ERR_ERROR);
+        result = createErrorCode(SEND_DATA, 3, ERR_ERROR);
+        goto finalise;
     }
 
     *dataRemaining -= dataToSend;
-    if(!dataRemaining) {
-        LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
-        LL_SPI_Disable(spiHandle);
+    if(*dataRemaining == 0) {
+        goto finalise;
     }
 
-    return (ERR_SUCCESS);
+    goto retValue;
+
+finalise:
+    LL_DMA_DisableChannel(dmaHandle, dmaChannelUsed);
+    LL_SPI_Disable(spiHandle);
+    if(isError(result)) {
+        state = stateError;
+    }
+
+retValue:
+    return result;
 }
 
 /**
