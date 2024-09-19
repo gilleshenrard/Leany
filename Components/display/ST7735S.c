@@ -84,6 +84,7 @@ static uint8_t               displayHeight      = 0;  ///< Current height of the
 static uint8_t               displayWidth       = 0;  ///< Current width of the display (depending on orientation)
 static orientation_e         currentOrientation = NB_ORIENTATION;  ///< Current display orientation
 static uint32_t              dataTXRemaining    = 0;
+static TickType_t            previousTick       = 0;
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
@@ -465,7 +466,8 @@ static errorCode_u stateConfiguring(void) {
         return pushErrorCode(result, CONFIG, 4);
     }
 
-    state = stateIdle;
+    previousTick = xTaskGetTickCount();
+    state        = stateIdle;
     return (ERR_SUCCESS);
 }
 
@@ -475,7 +477,10 @@ static errorCode_u stateConfiguring(void) {
  * @return Success
  */
 static errorCode_u stateIdle(void) {
-    static uint8_t nbChar = 1;
+    const uint8_t  REFRESH_DELAY_MS = 30U;
+    static uint8_t nbChar           = 1;
+
+    vTaskDelayUntil(&previousTick, pdMS_TO_TICKS(REFRESH_DELAY_MS));
 
     if(nbChar) {
         nbChar--;
