@@ -60,11 +60,11 @@ typedef enum {
 typedef errorCode_u (*screenState)(void);
 
 //utility functions
-static void               taskST7735S(void* argument);
-static inline void        setDataCommandGPIO(DCgpio_e function);
-static inline errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint8_t height);
-static inline void        turnBacklightON(void);
-static errorCode_u        sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
+static void        taskST7735S(void* argument);
+static inline void setDataCommandGPIO(DCgpio_e function);
+static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint8_t height);
+static inline void turnBacklightON(void);
+static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
 
 //state machine
 static errorCode_u stateStartup(void);
@@ -160,7 +160,7 @@ static inline void setDataCommandGPIO(DCgpio_e function) {
 }
 
 //NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-static inline errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint8_t height) {
+static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint8_t height) {
     //set the data window columns count
     uint8_t columns[4] = {0, Xstart, 0, Xstart + width};
     result             = sendCommand(CASET, columns, 4);
@@ -223,7 +223,7 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
     while(nbParameters && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {
         //wait for the previous byte to be done, then send the next one
         while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {}
-        if(!LL_SPI_IsActiveFlag_TXE(spiHandle)) {
+        if(LL_SPI_IsActiveFlag_TXE(spiHandle)) {
             LL_SPI_TransmitData8(spiHandle, *iterator);
         }
 
@@ -460,6 +460,11 @@ static errorCode_u stateConfiguring(void) {
     do {
         result = sendData(&dataTXRemaining);
     } while(dataTXRemaining && !isError(result));
+
+    if(isError(result)) {
+        state = stateError;
+        return pushErrorCode(result, CONFIG, 4);
+    }
 
     state = stateIdle;
     return (ERR_SUCCESS);
