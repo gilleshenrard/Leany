@@ -485,7 +485,11 @@ static errorCode_u stateIdle(void) {
     if(nbChar) {
         nbChar--;
 
-        setWindow(0, 0, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
+        result = setWindow(0, 0, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
+        if(isError(result)) {
+            state = stateError;
+            return pushErrorCode(result, 1, 1);
+        }
 
         //fill the frame buffer with background pixels
         uint8_t* iterator = displayBuffer;
@@ -498,6 +502,7 @@ static errorCode_u stateIdle(void) {
         result                 = sendData(&characterSize);
         if(isError(result)) {
             state = stateError;
+            return pushErrorCode(result, 1, 1);
         }
     }
 
