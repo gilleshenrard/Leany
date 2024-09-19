@@ -485,7 +485,7 @@ static errorCode_u stateIdle(void) {
     if(nbChar) {
         nbChar--;
 
-        setWindow(2U, 2U, VERDANA_NB_COLUMNS + 1U, VERDANA_NB_ROWS + 2U);
+        setWindow(0, 0, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
 
         //fill the frame buffer with background pixels
         uint8_t* iterator = displayBuffer;
