@@ -450,7 +450,7 @@ static errorCode_u stateConfiguring(void) {
     //turn on backlight
     turnBacklightON();
 
-    result = setWindow(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    result = setWindow(0, 0, displayWidth, displayHeight);
     if(isError(result)) {
         state = stateError;
         return pushErrorCode(result, CONFIG, 3);
