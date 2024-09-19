@@ -103,6 +103,9 @@ void st7735sDMAinterruptHandler(void) {
  * @return Success
  */
 errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dmaChannel) {
+    const uint8_t       BYTE_DOWNSHIFT        = 8U;
+    const uint8_t       BYTE_MASK             = 0xFFU;
+    uint8_t*            iterator              = displayBuffer;
     static StackType_t  taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
     static StaticTask_t taskState             = {0};  ///< Task state variables
 
@@ -119,6 +122,12 @@ errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dm
     //set the DMA source and destination addresses (will always use the same ones)
     LL_DMA_ConfigAddresses(dmaHandle, dmaChannelUsed, (uint32_t)&displayBuffer, LL_SPI_DMA_GetRegAddr(spiHandle),
                            LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+
+    //fill the frame buffer with background pixels
+    for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel++) {
+        *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL >> BYTE_DOWNSHIFT);
+        *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL & BYTE_MASK);
+    }
 
     //create the static task
     taskHandle =
@@ -419,10 +428,6 @@ static errorCode_u stateStartup(void) {
  * @retval 2 Error while setting the screen orientation
  */
 static errorCode_u stateConfiguring(void) {
-    const uint8_t BYTE_DOWNSHIFT = 8U;
-    const uint8_t BYTE_MASK      = 0xFFU;
-    uint8_t*      iterator       = displayBuffer;
-
     //execute all configuration commands
     for(uint8_t command = 0; command < (uint8_t)ST7735_NB_COMMANDS; command++) {
         result =
@@ -443,12 +448,6 @@ static errorCode_u stateConfiguring(void) {
 
     //turn on backlight
     turnBacklightON();
-
-    //fill the frame buffer with background pixels
-    for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel++) {
-        *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL >> BYTE_DOWNSHIFT);
-        *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL & BYTE_MASK);
-    }
 
     result = setWindow(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
     if(isError(result)) {
