@@ -392,8 +392,8 @@ static inline void turnBacklightON(void) {
  * @retval 2 Error while transmitting the sleep out command
  */
 static errorCode_u stateStartup(void) {
-    static const uint8_t RESET_DELAY_MS    = 150U;  ///< Number of milliseconds to wait after reset
-    static const uint8_t SLEEPOUT_DELAY_MS = 255U;  ///< Number of milliseconds to wait sleep out
+    const uint8_t RESET_DELAY_MS    = 150U;  ///< Number of milliseconds to wait after reset
+    const uint8_t SLEEPOUT_DELAY_MS = 255U;  ///< Number of milliseconds to wait sleep out
 
     //send the reset command and, if error, exit
     result = sendCommand(SWRESET, NULL, 0);
