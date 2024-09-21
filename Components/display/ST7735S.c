@@ -64,6 +64,7 @@ static void        taskST7735S(void* argument);
 static inline void setDataCommandGPIO(DCgpio_e function);
 static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint8_t height);
 static inline void turnBacklightON(void);
+static errorCode_u sendCommandNoFinalise(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
 static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
 
 //state machine
@@ -188,19 +189,7 @@ static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint
     return ERR_SUCCESS;
 }
 
-/**
- * @brief Send a command with parameters
- *
- * @param regNumber Register number
- * @param parameters Parameters to write
- * @param nbParameters Number of parameters to write
- * @return Success
- * @retval 1	No SPI handle declared
- * @retval 2	No parameters array provided with a non-zero number of parameters
- * @retval 3	Number of parameters above maximum
- * @retval 4	Timeout while sending the command
- */
-static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters) {
+static errorCode_u sendCommandNoFinalise(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters) {
     const uint8_t MAX_PARAMETERS = 16U;  ///< Maximum number of parameters a command can have
 
     //if no handle declared
@@ -245,15 +234,31 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
     while(LL_SPI_IsActiveFlag_BSY(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {}
     LL_SPI_ClearFlag_OVR(spiHandle);
 
-    //disable SPI and return status
-    LL_SPI_Disable(spiHandle);
-
     //if timeout, error
     if(((HAL_GetTick() - SPItick) >= SPI_TIMEOUT_MS)) {
         return (createErrorCode(SEND_CMD, 4, ERR_WARNING));
     }
 
     return (ERR_SUCCESS);
+}
+
+/**
+ * @brief Send a command with parameters
+ *
+ * @param regNumber Register number
+ * @param parameters Parameters to write
+ * @param nbParameters Number of parameters to write
+ * @return Success
+ * @retval 1	No SPI handle declared
+ * @retval 2	No parameters array provided with a non-zero number of parameters
+ * @retval 3	Number of parameters above maximum
+ * @retval 4	Timeout while sending the command
+ */
+static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters) {
+    result = sendCommandNoFinalise(regNumber, parameters, nbParameters);
+    LL_SPI_Disable(spiHandle);
+
+    return (result);
 }
 
 /**
@@ -273,19 +278,6 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
 
     //clamp the data to send to max. the frameBuffer
     uint32_t dataToSend = (*dataRemaining > FRAME_BUFFER_SIZE ? FRAME_BUFFER_SIZE : *dataRemaining);
-
-    //set command pin and enable SPI
-    uint32_t SPItick = HAL_GetTick();
-    setDataCommandGPIO(COMMAND);
-    LL_SPI_Enable(spiHandle);
-
-    //send the command byte and wait for the transaction to be done
-    LL_SPI_TransmitData8(spiHandle, (uint8_t)RAMWR);
-    while(!LL_SPI_IsActiveFlag_TXE(spiHandle) && ((HAL_GetTick() - SPItick) < SPI_TIMEOUT_MS)) {}
-    if(!LL_SPI_IsActiveFlag_TXE(spiHandle)) {
-        result = createErrorCode(SEND_DATA, 1, ERR_ERROR);
-        goto finaliseDMA;
-    }
 
     //set data GPIO and enable SPI
     setDataCommandGPIO(DATA);
@@ -456,6 +448,7 @@ static errorCode_u stateConfiguring(void) {
         return pushErrorCode(result, CONFIG, 3);
     }
 
+    sendCommandNoFinalise(RAMWR, NULL, 0);
     dataTXRemaining = (DISPLAY_HEIGHT + 2) * (DISPLAY_WIDTH + 1) * sizeof(pixel_t);
     do {
         result = sendData(&dataTXRemaining);
@@ -490,6 +483,8 @@ static errorCode_u stateIdle(void) {
             state = stateError;
             return pushErrorCode(result, 1, 1);
         }
+
+        sendCommandNoFinalise(RAMWR, NULL, 0);
 
         //fill the frame buffer with background pixels
         uint8_t* iterator = displayBuffer;
