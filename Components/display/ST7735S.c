@@ -272,8 +272,15 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
  */
 //NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 static errorCode_u sendData(uint32_t* dataRemaining) {
+    static uint8_t WriteCommandSent = 0;
+
     if(!dataRemaining) {
         return ERR_SUCCESS;
+    }
+
+    if(!WriteCommandSent) {
+        sendCommandNoFinalise(RAMWR, NULL, 0);
+        WriteCommandSent = 1;
     }
 
     //clamp the data to send to max. the frameBuffer
@@ -316,6 +323,7 @@ finaliseDMA:
     if(isError(result)) {
         state = stateError;
     }
+    WriteCommandSent = 0;
     return result;
 }
 
@@ -448,7 +456,6 @@ static errorCode_u stateConfiguring(void) {
         return pushErrorCode(result, CONFIG, 3);
     }
 
-    sendCommandNoFinalise(RAMWR, NULL, 0);
     dataTXRemaining = (DISPLAY_HEIGHT + 2) * (DISPLAY_WIDTH + 1) * sizeof(pixel_t);
     do {
         result = sendData(&dataTXRemaining);
@@ -483,8 +490,6 @@ static errorCode_u stateIdle(void) {
             state = stateError;
             return pushErrorCode(result, 1, 1);
         }
-
-        sendCommandNoFinalise(RAMWR, NULL, 0);
 
         //fill the frame buffer with background pixels
         uint8_t* iterator = displayBuffer;
