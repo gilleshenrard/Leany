@@ -17,8 +17,6 @@
 _Static_assert((bool)(NB_BUTTONS <= UINT8_MAX), "The application supports maximum 255 buttons");
 
 enum {
-    STACK_SIZE              = 128U,   ///< Amount of words in the task stack
-    TASK_LOW_PRIORITY       = 8U,     ///< FreeRTOS number for a low priority task
     DEBOUNCE_TIME_MS        = 50U,    ///< Number of milliseconds to wait for debouncing
     HOLDING_TIME_MS         = 1000U,  ///< Number of milliseconds to wait before considering a button is held down
     EDGEDETECTION_TIME_MS   = 40U,    ///< Number of milliseconds during which a falling/rising edge can be detected
@@ -81,12 +79,12 @@ static volatile TaskHandle_t taskHandle = NULL;  ///< handle of the FreeRTOS tas
  * @param handle SPI handle used by the LSM6DSO
  */
 void createButtonsTask(void) {
-    static StackType_t  taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
-    static StaticTask_t taskState             = {0};  ///< Task state variables
+    static StackType_t       taskStack[configMINIMAL_STACK_SIZE] = {0};  ///< Buffer used as the task stack
+    static StaticTask_t      taskState                           = {0};  ///< Task state variables
 
     //create the static task
-    taskHandle =
-        xTaskCreateStatic(taskButtons, "GPIO buttons task", STACK_SIZE, NULL, TASK_LOW_PRIORITY, taskStack, &taskState);
+    taskHandle = xTaskCreateStatic(taskButtons, "GPIO buttons task", configMINIMAL_STACK_SIZE, NULL,
+                                   (configMAX_PRIORITIES >> 1), taskStack, &taskState);
     if(!taskHandle) {
         Error_Handler();
     }

@@ -30,8 +30,6 @@
 #define RADIANS_TO_DEGREES_TENTHS 572.957795F  ///< Ratio between radians and tenths of degrees (= 10 * (180°/PI))
 #define BASE_TEMPERATURE          25.0F        ///< Temperature at which the LSM6DSO temperature reading will give 0
 enum {
-    STACK_SIZE           = 128U,                        ///< Amount of words in the task stack
-    TASK_LOW_PRIORITY    = 8U,                          ///< FreeRTOS number for a low priority task
     BOOT_TIME_MS         = 10U,                         ///< Number of milliseconds to wait for the MEMS to boot
     SPI_TIMEOUT_MS       = 10U,                         ///< Number of milliseconds beyond which SPI is in timeout
     TIMEOUT_MS           = 1000U,                       ///< Max number of milliseconds to wait for the device ID
@@ -132,17 +130,17 @@ void lsm6dsoInterruptTriggered(uint8_t interruptPin) {
  * @param handle SPI handle used by the LSM6DSO
  */
 void createLSM6DSOTask(const SPI_TypeDef* handle) {
-    static StackType_t       taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
-    static StaticTask_t      taskState             = {0};  ///< Task state variables
-    static StaticSemaphore_t measureMutexState     = {0};  ///< ADC value mutex state variables
+    static StackType_t       taskStack[configMINIMAL_STACK_SIZE] = {0};  ///< Buffer used as the task stack
+    static StaticTask_t      taskState                           = {0};  ///< Task state variables
+    static StaticSemaphore_t measureMutexState                   = {0};  ///< ADC value mutex state variables
 
     //save the SPI handle used by LSM6DSO and disable SPI1
     spiHandle = (SPI_TypeDef*)handle;
     LL_SPI_Disable(spiHandle);
 
     //create the static task
-    taskHandle =
-        xTaskCreateStatic(taskLSM6DSO, "LSM6DSO task", STACK_SIZE, NULL, TASK_LOW_PRIORITY, taskStack, &taskState);
+    taskHandle = xTaskCreateStatic(taskLSM6DSO, "LSM6DSO task", configMINIMAL_STACK_SIZE, NULL,
+                                   (configMAX_PRIORITIES >> 1), taskStack, &taskState);
     if(!taskHandle) {
         Error_Handler();
     }
