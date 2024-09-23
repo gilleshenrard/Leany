@@ -70,6 +70,7 @@ static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t paramet
 //state machine
 static errorCode_u stateStartup(void);
 static errorCode_u stateConfiguring(void);
+static errorCode_u stateFillingBackground(void);
 static errorCode_u stateIdle(void);
 static errorCode_u stateError(void);
 
@@ -108,9 +109,6 @@ void st7735sDMAinterruptHandler(void) {
  * @return Success
  */
 errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dmaChannel) {
-    const uint8_t       BYTE_DOWNSHIFT        = 8U;
-    const uint8_t       BYTE_MASK             = 0xFFU;
-    uint8_t*            iterator              = displayBuffer;
     static StackType_t  taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
     static StaticTask_t taskState             = {0};  ///< Task state variables
 
@@ -127,12 +125,6 @@ errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dm
     //set the DMA source and destination addresses (will always use the same ones)
     LL_DMA_ConfigAddresses(dmaHandle, dmaChannelUsed, (uint32_t)&displayBuffer, LL_SPI_DMA_GetRegAddr(spiHandle),
                            LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-
-    //fill the frame buffer with background pixels
-    for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel++) {
-        *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL >> BYTE_DOWNSHIFT);
-        *(iterator++) = (registerValue_t)((pixel_t)DARK_CHARCOAL & BYTE_MASK);
-    }
 
     //create the static task
     taskHandle =
@@ -448,8 +440,16 @@ static errorCode_u stateConfiguring(void) {
         return pushErrorCode(result, CONFIG, 2);
     }
 
-    //turn on backlight
-    turnBacklightON();
+    previousTick = xTaskGetTickCount();
+    state        = stateFillingBackground;
+    return (ERR_SUCCESS);
+}
+
+static errorCode_u stateFillingBackground(void) {
+    //fill the frame buffer with background pixels
+    for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel += 2) {
+        *((uint16_t*)(&displayBuffer[pixel])) = 0xA631U;
+    }
 
     result = setWindow(0, 0, displayWidth, displayHeight);
     if(isError(result)) {
@@ -467,9 +467,11 @@ static errorCode_u stateConfiguring(void) {
         return pushErrorCode(result, CONFIG, 4);
     }
 
-    previousTick = xTaskGetTickCount();
-    state        = stateIdle;
-    return (ERR_SUCCESS);
+    //turn on backlight
+    turnBacklightON();
+
+    state = stateIdle;
+    return ERR_SUCCESS;
 }
 
 /**
