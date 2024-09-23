@@ -478,8 +478,8 @@ static errorCode_u stateConfiguring(void) {
  * @return Success
  */
 static errorCode_u stateIdle(void) {
-    const uint8_t  REFRESH_DELAY_MS = 30U;
-    static uint8_t nbChar           = 1;
+    const uint8_t                REFRESH_DELAY_MS = 30U;
+    static _Thread_local uint8_t nbChar           = 1;
 
     vTaskDelayUntil(&previousTick, pdMS_TO_TICKS(REFRESH_DELAY_MS));
 
