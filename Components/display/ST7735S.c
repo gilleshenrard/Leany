@@ -23,9 +23,11 @@
 #include "task.h"
 
 enum {
-    DISPLAY_WIDTH  = 160U,  ///< Number of pixels in width
-    DISPLAY_HEIGHT = 128U,  ///< Number of pixels in height
-    SPI_TIMEOUT_MS = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
+    STACK_SIZE        = 128U,  ///< Amount of words in the task stack
+    TASK_LOW_PRIORITY = 8U,    ///< FreeRTOS number for a low priority task
+    DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
+    DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
+    SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
     FRAME_BUFFER_SIZE =
         (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 10U,  ///< Size of the frame buffer in bytes
 };
@@ -106,11 +108,11 @@ void st7735sDMAinterruptHandler(void) {
  * @return Success
  */
 errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dmaChannel) {
-    const uint8_t            BYTE_DOWNSHIFT                      = 8U;
-    const uint8_t            BYTE_MASK                           = 0xFFU;
-    uint8_t*                 iterator                            = displayBuffer;
-    static StackType_t       taskStack[configMINIMAL_STACK_SIZE] = {0};  ///< Buffer used as the task stack
-    static StaticTask_t      taskState                           = {0};  ///< Task state variables
+    const uint8_t       BYTE_DOWNSHIFT        = 8U;
+    const uint8_t       BYTE_MASK             = 0xFFU;
+    uint8_t*            iterator              = displayBuffer;
+    static StackType_t  taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
+    static StaticTask_t taskState             = {0};  ///< Task state variables
 
     //save the SPI handle and DMA channel used by the ST7735S
     spiHandle      = handle;
@@ -133,8 +135,8 @@ errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dm
     }
 
     //create the static task
-    taskHandle = xTaskCreateStatic(taskST7735S, "ST7735S task", configMINIMAL_STACK_SIZE, NULL,
-                                   (configMAX_PRIORITIES >> 1), taskStack, &taskState);
+    taskHandle =
+        xTaskCreateStatic(taskST7735S, "ST7735S task", STACK_SIZE, NULL, TASK_LOW_PRIORITY, taskStack, &taskState);
     if(!taskHandle) {
         Error_Handler();
     }
