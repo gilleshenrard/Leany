@@ -84,7 +84,6 @@ static errorCode_u           result;                            ///< Buffer used
 static uint8_t               displayHeight      = 0;  ///< Current height of the display (depending on orientation)
 static uint8_t               displayWidth       = 0;  ///< Current width of the display (depending on orientation)
 static orientation_e         currentOrientation = NB_ORIENTATION;  ///< Current display orientation
-static uint32_t              dataTXRemaining    = 0;
 static TickType_t            previousTick       = 0;
 
 /********************************************************************************************************************************************/
@@ -458,7 +457,7 @@ static errorCode_u stateFillingBackground(void) {
         return pushErrorCode(result, CONFIG, 3);
     }
 
-    dataTXRemaining = (DISPLAY_HEIGHT + 2) * (DISPLAY_WIDTH + 1) * sizeof(pixel_t);
+    uint32_t dataTXRemaining = (DISPLAY_HEIGHT + 2) * (DISPLAY_WIDTH + 1) * sizeof(pixel_t);
     do {
         result = sendData(&dataTXRemaining);
     } while(dataTXRemaining && !isError(result));
