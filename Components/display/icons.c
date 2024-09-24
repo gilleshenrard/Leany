@@ -49,21 +49,21 @@ typedef enum {
 extern const line_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
 
 /**
- * @brief Uncompress a character from the array to a buffer
+ * @brief Uncompress a row of a character from the array to a buffer
  * @note Each character is represented with a bit for each pixel (values are either background or foreground)
  * 
  * @param[out] buffer Buffer to fill with the pixel values
  * @param character Character to uncompress
- * @param line Line of the character to uncompress
+ * @param row Row of the character to uncompress
  */
-void uncompressIconLine(pixel_t buffer[], verdanaCharacter_e character, uint8_t line) {
+void uncompressIconRow(pixel_t buffer[], verdanaCharacter_e character, uint8_t row) {
     for(uint8_t column = 0; column < (uint8_t)VERDANA_NB_COLUMNS; column++) {
         //create a mask showing the nature of the current pixel (foreground or background)
         line_t pixelMask = 1U << ((line_t)VERDANA_NB_COLUMNS - column - 1U);
 
         //get the proper colour to fill
-        pixel_t colour = ((verdana_48ptBitmaps[character][line] & pixelMask) == BACKGROUND ? DARK_CHARCOAL_BIGENDIAN
-                                                                                           : BRIGHT_GRAY_BIGENDIAN);
+        pixel_t colour = ((verdana_48ptBitmaps[character][row] & pixelMask) == BACKGROUND ? DARK_CHARCOAL_BIGENDIAN
+                                                                                          : BRIGHT_GRAY_BIGENDIAN);
 
         //fill the pixel
         buffer[column] = colour;

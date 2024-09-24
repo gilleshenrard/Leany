@@ -35,6 +35,6 @@ typedef enum {
  */
 typedef uint16_t pixel_t;
 
-void uncompressIconLine(pixel_t buffer[], verdanaCharacter_e character, uint8_t line);
+void uncompressIconRow(pixel_t buffer[], verdanaCharacter_e character, uint8_t row);
 
 #endif
