@@ -28,8 +28,7 @@ enum {
     DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
     DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
     SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
-    FRAME_BUFFER_SIZE =
-        (DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(pixel_t)) / 10U,  ///< Size of the frame buffer in bytes
+    FRAME_BUFFER_SIZE = (DISPLAY_WIDTH * DISPLAY_HEIGHT) / 10U,  ///< Size of the frame buffer in bytes
 };
 
 /**
@@ -80,7 +79,7 @@ static SPI_TypeDef*          spiHandle      = (void*)0;         ///< SPI handle 
 static DMA_TypeDef*          dmaHandle      = (void*)0;         ///< DMA handle used with the SSD1306
 static uint32_t              dmaChannelUsed = 0x00000000U;      ///< DMA channel used
 static screenState           state          = stateStartup;     ///< State machine current state
-static registerValue_t       displayBuffer[FRAME_BUFFER_SIZE];  ///< Buffer used to send data to the display
+static pixel_t               displayBuffer[FRAME_BUFFER_SIZE];  ///< Buffer used to send data to the display
 static errorCode_u           result;                            ///< Buffer used to store function return codes
 static uint8_t               displayHeight      = 0;  ///< Current height of the display (depending on orientation)
 static uint8_t               displayWidth       = 0;  ///< Current width of the display (depending on orientation)
@@ -279,7 +278,9 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     }
 
     //clamp the data to send to max. the frameBuffer
-    uint32_t dataToSend = (*dataRemaining > FRAME_BUFFER_SIZE ? FRAME_BUFFER_SIZE : *dataRemaining);
+    uint32_t dataToSend =
+        (*dataRemaining > (FRAME_BUFFER_SIZE * sizeof(pixel_t)) ? (FRAME_BUFFER_SIZE * sizeof(pixel_t))
+                                                                : *dataRemaining);
 
     //set data GPIO and enable SPI
     setDataCommandGPIO(DATA);
@@ -448,7 +449,7 @@ static errorCode_u stateConfiguring(void) {
 static errorCode_u stateFillingBackground(void) {
     //fill the frame buffer with background pixels
     for(uint16_t pixel = 0; pixel < (uint16_t)FRAME_BUFFER_SIZE; pixel += 2) {
-        *((uint16_t*)(&displayBuffer[pixel])) = 0xA631U;
+        *((uint16_t*)(&displayBuffer[pixel])) = DARK_CHARCOAL_BIGENDIAN;
     }
 
     result = setWindow(0, 0, displayWidth, displayHeight);
@@ -495,10 +496,8 @@ static errorCode_u stateIdle(void) {
         }
 
         //fill the frame buffer with background pixels
-        uint8_t* iterator = displayBuffer;
         for(uint8_t row = 0; row < (uint8_t)VERDANA_NB_ROWS; row++) {
-            uncompressIconLine(iterator, VERDANA_1, row);
-            iterator += ((uint8_t)VERDANA_NB_COLUMNS << 1U);
+            uncompressIconLine(&displayBuffer[row * VERDANA_NB_COLUMNS], VERDANA_1, row);
         }
 
         uint32_t characterSize = VERDANA_NB_COLUMNS * VERDANA_NB_ROWS * sizeof(pixel_t);

@@ -56,25 +56,17 @@ extern const line_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
  * @param character Character to uncompress
  * @param line Line of the character to uncompress
  */
-void uncompressIconLine(registerValue_t* buffer, verdanaCharacter_e character, uint8_t line) {
-    const registerValue_t MSB_DOWNSHIFT = 8U;
-    const registerValue_t LSB_MASK      = 0xFFU;
+void uncompressIconLine(pixel_t buffer[], verdanaCharacter_e character, uint8_t line) {
+    for(uint8_t column = 0; column < (uint8_t)VERDANA_NB_COLUMNS; column++) {
+        //create a mask showing the nature of the current pixel (foreground or background)
+        line_t pixelMask = 1U << ((line_t)VERDANA_NB_COLUMNS - column - 1U);
 
-    //prepare a mask to use with a bitwise AND, to check if the current pixels is background or foreground
-    line_t pixelMask = ((line_t)1U << ((line_t)VERDANA_NB_COLUMNS - 1U));
-
-    //For each pixel in the line (left to right)
-    while(pixelMask > 0) {
         //get the proper colour to fill
-        pixel_t colour =
-            ((verdana_48ptBitmaps[character][line] & pixelMask) == BACKGROUND ? DARK_CHARCOAL : BRIGHT_GRAY);
+        pixel_t colour = ((verdana_48ptBitmaps[character][line] & pixelMask) == BACKGROUND ? DARK_CHARCOAL_BIGENDIAN
+                                                                                           : BRIGHT_GRAY_BIGENDIAN);
 
-        //set the two next buffer values (done byte by byte to avoid small endian issues)
-        *(buffer++) = (registerValue_t)(colour >> MSB_DOWNSHIFT);
-        *(buffer++) = (registerValue_t)(colour & LSB_MASK);
-
-        //get to the next pixel
-        pixelMask >>= 1U;
+        //fill the pixel
+        buffer[column] = colour;
     }
 }
 

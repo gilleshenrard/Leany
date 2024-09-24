@@ -1,7 +1,6 @@
 #ifndef INC_HARDWARE_SCREEN_ICONS_H_
 #define INC_HARDWARE_SCREEN_ICONS_H_
 #include <stdint.h>
-#include "ST7735_initialisation.h"
 
 enum {
     VERDANA_NB_ROWS    = 49U,
@@ -9,8 +8,8 @@ enum {
 };
 
 typedef enum {
-    BRIGHT_GRAY   = 0xEF7DU,  ///< #EEEEEE
-    DARK_CHARCOAL = 0x31A6U,  ///< #333333
+    BRIGHT_GRAY_BIGENDIAN   = 0x7DEFU,  ///< #EEEEEE in RGB565 with MSB and LSB switched
+    DARK_CHARCOAL_BIGENDIAN = 0xA631U,  ///< #333333 in RGB565 with MSB and LSB switched
 } colours_e;
 
 typedef enum {
@@ -36,6 +35,6 @@ typedef enum {
  */
 typedef uint16_t pixel_t;
 
-void uncompressIconLine(registerValue_t* buffer, verdanaCharacter_e character, uint8_t line);
+void uncompressIconLine(pixel_t buffer[], verdanaCharacter_e character, uint8_t line);
 
 #endif
