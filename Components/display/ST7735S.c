@@ -15,6 +15,7 @@
 #include "icons.h"
 #include "main.h"
 #include "projdefs.h"
+#include "queue.h"
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_ll_dma.h"
@@ -28,6 +29,7 @@ enum {
     DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
     DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
     SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
+    NB_QUEUE_ELEM     = 10U,
     FRAME_BUFFER_SIZE = (DISPLAY_WIDTH * DISPLAY_HEIGHT) / 10U,  ///< Size of the frame buffer in bytes
 };
 
@@ -85,6 +87,7 @@ static uint8_t               displayHeight      = 0;  ///< Current height of the
 static uint8_t               displayWidth       = 0;  ///< Current width of the display (depending on orientation)
 static orientation_e         currentOrientation = NB_ORIENTATION;  ///< Current display orientation
 static TickType_t            previousTick       = 0;
+QueueHandle_t                messageStack       = NULL;
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
@@ -107,8 +110,10 @@ void st7735sDMAinterruptHandler(void) {
  * @return Success
  */
 errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dmaChannel) {
-    static StackType_t  taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
-    static StaticTask_t taskState             = {0};  ///< Task state variables
+    static StackType_t   taskStack[STACK_SIZE] = {0};  ///< Buffer used as the task stack
+    static StaticTask_t  taskState             = {0};  ///< Task state variables
+    static uint8_t       queueStorage[sizeof(displayMessage_t) * NB_QUEUE_ELEM] = {0};
+    static StaticQueue_t queueState                                             = {0};
 
     //save the SPI handle and DMA channel used by the ST7735S
     spiHandle      = handle;
@@ -128,6 +133,11 @@ errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dm
     taskHandle =
         xTaskCreateStatic(taskST7735S, "ST7735S task", STACK_SIZE, NULL, TASK_LOW_PRIORITY, taskStack, &taskState);
     if(!taskHandle) {
+        Error_Handler();
+    }
+
+    messageStack = xQueueCreateStatic(NB_QUEUE_ELEM, sizeof(displayMessage_t), queueStorage, &queueState);
+    if(!messageStack) {
         Error_Handler();
     }
 
@@ -481,9 +491,14 @@ static errorCode_u stateFillingBackground(void) {
  */
 static errorCode_u stateIdle(void) {
     const uint8_t                REFRESH_DELAY_MS = 30U;
+    const uint8_t                MSG_DELAY_MS     = 2U;
     static _Thread_local uint8_t nbChar           = 1;
+    displayMessage_t             message          = {0};
 
     vTaskDelayUntil(&previousTick, pdMS_TO_TICKS(REFRESH_DELAY_MS));
+    if(xQueueReceive(messageStack, &message, pdMS_TO_TICKS(MSG_DELAY_MS)) == pdFALSE) {
+        return ERR_SUCCESS;
+    }
 
     if(nbChar) {
         nbChar--;
