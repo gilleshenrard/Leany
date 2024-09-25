@@ -2,10 +2,8 @@
 #define INC_HARDWARE_SCREEN_ST7735S_H_
 
 #include <stdint.h>
-#include "FreeRTOS.h"
 #include "ST7735_initialisation.h"
 #include "errorstack.h"
-#include "queue.h"
 #include "stm32f103xb.h"
 
 enum {
@@ -25,9 +23,8 @@ typedef struct {
     int16_t     value;
 } __attribute__((aligned(MESSAGE_ALIGNMENT))) displayMessage_t;
 
-extern QueueHandle_t messageStack;
-
 errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dmaChannel);
 errorCode_u st7735sSetOrientation(orientation_e orientation);
 void        st7735sDMAinterruptHandler(void);
+uint8_t     sendDisplayMessage(displayMessage_t message);
 #endif

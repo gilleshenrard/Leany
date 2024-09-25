@@ -87,7 +87,7 @@ static uint8_t               displayHeight      = 0;  ///< Current height of the
 static uint8_t               displayWidth       = 0;  ///< Current width of the display (depending on orientation)
 static orientation_e         currentOrientation = NB_ORIENTATION;  ///< Current display orientation
 static TickType_t            previousTick       = 0;
-QueueHandle_t                messageStack       = NULL;
+static QueueHandle_t         messageStack       = NULL;
 
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
@@ -376,6 +376,17 @@ errorCode_u st7735sSetOrientation(orientation_e orientation) {
     }
 
     return (ERR_SUCCESS);
+}
+
+/**
+ * @brief Push a message in the display message stack
+ * 
+ * @param message Message to send
+ * @retval 0 Message sent
+ * @retval 1 Message could not be sent in a timely manner
+ */
+uint8_t sendDisplayMessage(displayMessage_t message) {
+    return (xQueueSendToFront(messageStack, &message, 2U) == pdFALSE);
 }
 
 /**
