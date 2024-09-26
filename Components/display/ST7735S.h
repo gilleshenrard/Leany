@@ -25,6 +25,7 @@ typedef struct {
 
 errorCode_u createST7735Stask(SPI_TypeDef* handle, DMA_TypeDef* dma, uint32_t dmaChannel);
 errorCode_u st7735sSetOrientation(orientation_e orientation);
+BaseType_t  sendDisplayMessage(const displayMessage_t* message);
 void        st7735sDMAinterruptHandler(void);
 uint8_t     sendDisplayMessage(displayMessage_t message);
 #endif

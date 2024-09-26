@@ -2,7 +2,7 @@
  * @file ST7735S.c
  * @brief Implement the functioning of the ST7735S TFT screen via SPI and DMA
  * @author Gilles Henrard
- * @date 23/09/2024
+ * @date 26/09/2024
  *
  * @note Datasheet : https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
  */
@@ -29,6 +29,7 @@ enum {
     DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
     DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
     SPI_TIMEOUT_MS    = 10U,   ///< Number of milliseconds beyond which SPI is in timeout
+    MSG_TIMEOUT_MS    = 2U,
     NB_QUEUE_ELEM     = 10U,
     FRAME_BUFFER_SIZE = (DISPLAY_WIDTH * DISPLAY_HEIGHT) / 10U,  ///< Size of the frame buffer in bytes
 };
@@ -396,6 +397,17 @@ static inline void turnBacklightON(void) {
     LL_GPIO_SetOutputPin(ST7735S_BL_GPIO_Port, ST7735S_BL_Pin);
 }
 
+/**
+ * @brief Send a message to the display
+ * 
+ * @param message Message to send
+ * @retval pdTrue  Message sent
+ * @retval pdFalse Message could not be sent in a timely manner
+ */
+BaseType_t sendDisplayMessage(const displayMessage_t* message) {
+    return xQueueSendToFront(messageStack, message, MSG_TIMEOUT_MS);
+}
+
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
 
@@ -502,12 +514,11 @@ static errorCode_u stateFillingBackground(void) {
  */
 static errorCode_u stateIdle(void) {
     const uint8_t                REFRESH_DELAY_MS = 30U;
-    const uint8_t                MSG_DELAY_MS     = 2U;
     static _Thread_local uint8_t nbChar           = 1;
     displayMessage_t             message          = {0};
 
     vTaskDelayUntil(&previousTick, pdMS_TO_TICKS(REFRESH_DELAY_MS));
-    if(xQueueReceive(messageStack, &message, pdMS_TO_TICKS(MSG_DELAY_MS)) == pdFALSE) {
+    if(xQueueReceive(messageStack, &message, pdMS_TO_TICKS(MSG_TIMEOUT_MS)) == pdFALSE) {
         return ERR_SUCCESS;
     }
 
