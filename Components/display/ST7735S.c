@@ -513,38 +513,44 @@ static errorCode_u stateFillingBackground(void) {
  * @return Success
  */
 static errorCode_u stateIdle(void) {
-    const uint8_t                REFRESH_DELAY_MS = 30U;
-    static _Thread_local uint8_t nbChar           = 1;
-    displayMessage_t             message          = {0};
+    const uint8_t    REFRESH_DELAY_MS = 30U;
+    displayMessage_t message          = {0};
+    uint32_t         characterSize    = 0;
 
     vTaskDelayUntil(&previousTick, pdMS_TO_TICKS(REFRESH_DELAY_MS));
-    if(xQueueReceive(messageStack, &message, pdMS_TO_TICKS(MSG_TIMEOUT_MS)) == pdFALSE) {
-        return ERR_SUCCESS;
+
+    while(xQueueReceive(messageStack, &message, pdMS_TO_TICKS(MSG_TIMEOUT_MS)) == pdTRUE) {
+        switch(message.ID) {
+            case MSG_ROLL_VALUE:
+                result = setWindow(0, 0, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
+                if(isError(result)) {
+                    state = stateError;
+                    return pushErrorCode(result, 1, 1);
+                }
+
+                //fill the frame buffer with background pixels
+                for(uint8_t row = 0; row < (uint8_t)VERDANA_NB_ROWS; row++) {
+                    uncompressIconRow(&displayBuffer[row * VERDANA_NB_COLUMNS], VERDANA_1, row);
+                }
+
+                characterSize = VERDANA_NB_COLUMNS * VERDANA_NB_ROWS * sizeof(pixel_t);
+                result        = sendData(&characterSize);
+                if(isError(result)) {
+                    state = stateError;
+                    return pushErrorCode(result, 1, 1);
+                }
+                break;
+
+            case MSG_PITCH_VALUE:
+            case MSG_HOLD:
+            case MSG_ZERO:
+            case NB_MESSAGES:
+            default:
+                break;
+        }
     }
 
-    if(nbChar) {
-        nbChar--;
-
-        result = setWindow(0, 0, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
-        if(isError(result)) {
-            state = stateError;
-            return pushErrorCode(result, 1, 1);
-        }
-
-        //fill the frame buffer with background pixels
-        for(uint8_t row = 0; row < (uint8_t)VERDANA_NB_ROWS; row++) {
-            uncompressIconRow(&displayBuffer[row * VERDANA_NB_COLUMNS], VERDANA_1, row);
-        }
-
-        uint32_t characterSize = VERDANA_NB_COLUMNS * VERDANA_NB_ROWS * sizeof(pixel_t);
-        result                 = sendData(&characterSize);
-        if(isError(result)) {
-            state = stateError;
-            return pushErrorCode(result, 1, 1);
-        }
-    }
-
-    return (ERR_SUCCESS);
+    return ERR_SUCCESS;
 }
 
 /**
