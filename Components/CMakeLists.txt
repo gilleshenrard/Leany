@@ -1,6 +1,6 @@
 ##############################################################################################
 # brief: User-defined modules CMakeLists file
-# date:  17/08/2024
+# date:  26/09/2024
 ##############################################################################################
 #declare warning flags
 set(WARNING_FLAGS
@@ -62,6 +62,15 @@ target_include_directories(sysUtils PUBLIC sysutils/)
 target_compile_definitions(sysUtils PUBLIC $<TARGET_PROPERTY:stm32cubemx,INTERFACE_COMPILE_DEFINITIONS>)
 target_include_directories(sysUtils SYSTEM INTERFACE $<TARGET_PROPERTY:stm32cubemx,INTERFACE_INCLUDE_DIRECTORIES>)
 target_compile_options(sysUtils PUBLIC ${WARNING_FLAGS})
+
+#populate softVersion.c with the latest git commit hash
+add_custom_command(TARGET sysUtils
+	PRE_BUILD
+	COMMAND ${CMAKE_COMMAND}
+	-P gitVersion.cmake
+	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/sysutils/
+	COMMENT "Populating the latest git commit hash"
+)
 
 #create the LSM6DSO library, taking care of the MEMS sensor
 add_library(lsm6dso
