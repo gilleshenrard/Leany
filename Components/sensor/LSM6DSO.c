@@ -12,6 +12,7 @@
  */
 #include "LSM6DSO.h"
 #include <math.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "FreeRTOS.h"
 #include "LSM6DSO_registers.h"
@@ -25,6 +26,7 @@
 #include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_ll_spi.h"
 #include "task.h"
+
 
 #define ANGLE_DELTA_MINIMUM       0.05F        ///< Minimum value for angle differences to be noticed
 #define RADIANS_TO_DEGREES_TENTHS 572.957795F  ///< Ratio between radians and tenths of degrees (= 10 * (180°/PI))

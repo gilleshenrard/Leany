@@ -5,6 +5,7 @@
  */
 #include "buttons.h"
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
@@ -12,6 +13,7 @@
 #include "portmacro.h"
 #include "stm32f103xb.h"
 #include "stm32f1xx_hal.h"
+#include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "task.h"
 

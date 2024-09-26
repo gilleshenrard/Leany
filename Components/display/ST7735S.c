@@ -7,6 +7,7 @@
  * @note Datasheet : https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
  */
 #include "ST7735S.h"
+#include <stddef.h>
 #include <stdint.h>
 #include "FreeRTOS.h"
 #include "ST7735_initialisation.h"
@@ -14,8 +15,10 @@
 #include "errorstack.h"
 #include "icons.h"
 #include "main.h"
+#include "portmacro.h"
 #include "projdefs.h"
 #include "queue.h"
+#include "stm32f103xb.h"
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_ll_dma.h"
