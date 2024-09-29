@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include "FreeRTOS.h"
 #include "LSM6DSO_registers.h"
+#include "ST7735S.h"
 #include "errorstack.h"
 #include "main.h"
 #include "portmacro.h"
@@ -26,7 +27,6 @@
 #include "stm32f1xx_hal_def.h"
 #include "stm32f1xx_ll_spi.h"
 #include "task.h"
-
 
 #define ANGLE_DELTA_MINIMUM       0.05F        ///< Minimum value for angle differences to be noticed
 #define RADIANS_TO_DEGREES_TENTHS 572.957795F  ///< Ratio between radians and tenths of degrees (= 10 * (180°/PI))
@@ -546,6 +546,7 @@ static errorCode_u stateMeasuring(void) {
     float                        gyroscope_radps[NB_AXIS];     ///< Gyroscope values in [rad/s]
     int16_t*                     valueIterator    = (void*)0;  ///< Pointer used to browse through read values
     static _Thread_local int16_t previousTemp_LSB = 0;         ///< Previously read temperature LSB values
+    displayMessage_t             msg              = {0};
 
     //wait for measurements to be ready
     if(ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(TIMEOUT_MS)) == pdFALSE) {
@@ -594,6 +595,22 @@ static errorCode_u stateMeasuring(void) {
 
     //apply a complementary filter on read values
     complementaryFilter(accelerometer_mG, gyroscope_radps, latestAngles_rad);
+
+    if(lsm6dsoHasChanged(X_AXIS)) {
+        msg.ID    = MSG_ROLL_VALUE;
+        msg.value = getAngleDegreesTenths(X_AXIS);
+        if(sendDisplayMessage(&msg)) {
+            return (createErrorCode(MEASURING, 3, ERR_WARNING));
+        }
+    }
+
+    if(lsm6dsoHasChanged(Y_AXIS)) {
+        msg.ID    = MSG_PITCH_VALUE;
+        msg.value = getAngleDegreesTenths(Y_AXIS);
+        if(sendDisplayMessage(&msg)) {
+            return (createErrorCode(MEASURING, 4, ERR_WARNING));
+        }
+    }
 
     return (ERR_SUCCESS);
 }

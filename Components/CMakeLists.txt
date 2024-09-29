@@ -72,12 +72,6 @@ add_custom_command(TARGET sysUtils
 	COMMENT "Populating the latest git commit hash"
 )
 
-#create the LSM6DSO library, taking care of the MEMS sensor
-add_library(lsm6dso
-	sensor/LSM6DSO.c)
-target_include_directories(lsm6dso PUBLIC sensor/)
-target_link_libraries(lsm6dso PRIVATE sysUtils)
-
 #create the ssd1306 library, taking care of the display
 add_library(st7735s
 	display/ST7735S.c
@@ -85,6 +79,13 @@ add_library(st7735s
 	display/ST7735_initialisation.c)
 target_include_directories(st7735s PUBLIC display)
 target_link_libraries(st7735s PRIVATE sysUtils)
+
+#create the LSM6DSO library, taking care of the MEMS sensor
+add_library(lsm6dso
+	sensor/LSM6DSO.c)
+target_include_directories(lsm6dso PUBLIC sensor/)
+target_link_libraries(lsm6dso PRIVATE sysUtils)
+target_link_libraries(lsm6dso PRIVATE st7735s)
 
 #create the buttons library, taking care of the control buttons
 add_library(buttons
