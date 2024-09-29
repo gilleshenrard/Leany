@@ -71,6 +71,7 @@ static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint
 static inline void turnBacklightON(void);
 static errorCode_u sendCommandNoFinalise(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
 static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
+static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t yTop);
 
 //state machine
 static errorCode_u stateStartup(void);
@@ -400,6 +401,28 @@ uint8_t sendDisplayMessage(const displayMessage_t* message) {
     return (xQueueSendToFront(messageStack, message, MSG_TIMEOUT_MS) != pdTRUE);
 }
 
+errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t yTop) {
+    uint32_t characterSize = 0;
+
+    result = setWindow(xLeft, yTop, xLeft + VERDANA_NB_COLUMNS - 1, yTop + VERDANA_NB_ROWS - 1);
+    if(isError(result)) {
+        state = stateError;
+        return pushErrorCode(result, 1, 1);
+    }
+
+    //fill the frame buffer with background pixels
+    uncompressCharacter(displayBuffer, character);
+
+    characterSize = VERDANA_NB_COLUMNS * VERDANA_NB_ROWS * sizeof(pixel_t);
+    result        = sendData(&characterSize);
+    if(isError(result)) {
+        state = stateError;
+        return pushErrorCode(result, 1, 1);
+    }
+
+    return ERR_SUCCESS;
+}
+
 /********************************************************************************************************************************************/
 /********************************************************************************************************************************************/
 
@@ -507,28 +530,21 @@ static errorCode_u stateFillingBackground(void) {
 static errorCode_u stateIdle(void) {
     const uint8_t    REFRESH_DELAY_MS = 30U;
     displayMessage_t message          = {0};
-    uint32_t         characterSize    = 0;
 
     vTaskDelayUntil(&previousTick, pdMS_TO_TICKS(REFRESH_DELAY_MS));
 
     while(xQueueReceive(messageStack, &message, pdMS_TO_TICKS(MSG_TIMEOUT_MS)) == pdTRUE) {
         switch(message.ID) {
             case MSG_ROLL_VALUE:
-                result = setWindow(0, 0, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
-                if(isError(result)) {
-                    state = stateError;
-                    return pushErrorCode(result, 1, 1);
+                if(message.value >= 0) {
+                    printCharacter(VERDANA_PLUS, 0, 0);
+                } else {
+                    message.value = (int16_t)-message.value;
+                    printCharacter(VERDANA_MIN, 0, 0);
                 }
-
-                //fill the frame buffer with background pixels
-                uncompressCharacter(displayBuffer, VERDANA_2);
-
-                characterSize = VERDANA_NB_COLUMNS * VERDANA_NB_ROWS * sizeof(pixel_t);
-                result        = sendData(&characterSize);
-                if(isError(result)) {
-                    state = stateError;
-                    return pushErrorCode(result, 1, 1);
-                }
+                printCharacter((verdanaCharacter_e)(message.value / 100), VERDANA_NB_COLUMNS, 0);
+                printCharacter((verdanaCharacter_e)((message.value / 10) % 10), (VERDANA_NB_COLUMNS * 2), 0);
+                printCharacter((verdanaCharacter_e)(message.value % 10), (VERDANA_NB_COLUMNS * 4), 0);
                 break;
 
             case MSG_PITCH_VALUE:
