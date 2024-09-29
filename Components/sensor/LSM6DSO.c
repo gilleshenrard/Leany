@@ -51,7 +51,7 @@ typedef enum {
     CHECK_DEVICE_ID,     ///< stateStartup() state
     CONFIGURING,         ///< stateConfiguring() state
     DROPPING,            ///< stateIgnoringSamples() state
-    MEASURING,           ///< stMeasuring() state
+    MEASURING,           ///< stateMeasuring() state
 } LSM6DSOfunction_e;
 
 /**
