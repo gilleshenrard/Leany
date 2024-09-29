@@ -111,10 +111,6 @@ int main(void)
   createLSM6DSOTask(SPI1);
   createST7735Stask(SPI2, DMA1, LL_DMA_CHANNEL_5);
   createButtonsTask();
-
-  
-  displayMessage_t msg = {.ID = MSG_ROLL_VALUE, .value = 0};
-  sendDisplayMessage(&msg);
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */
