@@ -91,9 +91,9 @@ static errorCode_u stateError(void);
 static void        taskLSM6DSO(void* argument);
 static errorCode_u writeRegister(LSM6DSOregister_e registerNumber, uint8_t value);
 static errorCode_u readRegisters(LSM6DSOregister_e firstRegister, uint8_t value[], uint8_t size);
-
-static void complementaryFilter(const float accelerometer_mG[], const float gyroscope_radps[],
-                                float filteredAngles_rad[]);
+static uint8_t     lsm6dsoHasChanged(axis_e axis);
+static void        complementaryFilter(const float accelerometer_mG[], const float gyroscope_radps[],
+                                       float filteredAngles_rad[]);
 
 //state variables
 static volatile TaskHandle_t taskHandle  = NULL;            ///< handle of the FreeRTOS task
