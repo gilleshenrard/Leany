@@ -2,7 +2,7 @@
  * @file LSM6DSO.c
  * @brief Implement the LSM6DSO MEMS sensor communication
  * @author Gilles Henrard
- * @date 18/09/2024
+ * @date 29/09/2024
  *
  * @note Additional information can be found in :
  *   - Datasheet : https://www.st.com/resource/en/datasheet/lsm6dso.pdf
@@ -291,20 +291,28 @@ static errorCode_u writeRegister(LSM6DSOregister_e registerNumber, uint8_t value
  */
 uint8_t lsm6dsoHasChanged(axis_e axis) {
     static _Thread_local float previousAngles_rad[NB_AXIS - 1] = {0.0F, 0.0F};
-    uint8_t                    comparison                      = 0;
 
+    //if axis index too high, return false
+    if(axis >= (NB_AXIS - 1)) {
+        return 0;
+    }
+
+    //take angles mutex
     if(xSemaphoreTake(anglesMutex, pdMS_TO_TICKS(SPI_TIMEOUT_MS)) == pdFALSE) {
         return 0;
     }
 
+    //check if angle changed above minimum threshold
+    uint8_t changed = 0;
     if(fabsf(latestAngles_rad[axis] - previousAngles_rad[axis]) > ANGLE_DELTA_MINIMUM) {
         previousAngles_rad[axis] = latestAngles_rad[axis];
-        comparison               = 1;
+        changed                  = 1;
     }
 
+    //release angles mutex
     xSemaphoreGive(anglesMutex);
 
-    return (comparison);
+    return (changed);
 }
 
 /**
