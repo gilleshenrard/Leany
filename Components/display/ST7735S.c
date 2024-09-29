@@ -393,11 +393,11 @@ static inline void turnBacklightON(void) {
  * @brief Send a message to the display
  * 
  * @param message Message to send
- * @retval pdTrue  Message sent
- * @retval pdFalse Message could not be sent in a timely manner
+ * @retval 0 Message sent
+ * @retval 1 Message could not be sent in a timely manner
  */
-BaseType_t sendDisplayMessage(const displayMessage_t* message) {
-    return xQueueSendToFront(messageStack, message, MSG_TIMEOUT_MS);
+uint8_t sendDisplayMessage(const displayMessage_t* message) {
+    return (xQueueSendToFront(messageStack, message, MSG_TIMEOUT_MS) != pdTRUE);
 }
 
 /********************************************************************************************************************************************/
