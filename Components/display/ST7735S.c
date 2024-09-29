@@ -521,9 +521,7 @@ static errorCode_u stateIdle(void) {
                 }
 
                 //fill the frame buffer with background pixels
-                for(uint8_t row = 0; row < (uint8_t)VERDANA_NB_ROWS; row++) {
-                    uncompressIconRow(&displayBuffer[row * VERDANA_NB_COLUMNS], VERDANA_1, row);
-                }
+                uncompressCharacter(displayBuffer, VERDANA_2);
 
                 characterSize = VERDANA_NB_COLUMNS * VERDANA_NB_ROWS * sizeof(pixel_t);
                 result        = sendData(&characterSize);

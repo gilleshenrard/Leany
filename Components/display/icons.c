@@ -54,19 +54,20 @@ extern const line_t verdana_48ptBitmaps[NB_CHARACTERS][VERDANA_NB_ROWS];
  * 
  * @param[out] buffer Buffer to fill with the pixel values
  * @param character Character to uncompress
- * @param row Row of the character to uncompress
  */
-void uncompressIconRow(pixel_t buffer[], verdanaCharacter_e character, uint8_t row) {
-    for(uint8_t column = 0; column < (uint8_t)VERDANA_NB_COLUMNS; column++) {
-        //create a mask showing the nature of the current pixel (foreground or background)
-        line_t pixelMask = (line_t)1U << ((line_t)VERDANA_NB_COLUMNS - column - 1U);
+void uncompressCharacter(pixel_t buffer[], verdanaCharacter_e character) {
+    for(uint8_t row = 0; row < (uint8_t)VERDANA_NB_ROWS; row++) {
+        for(uint8_t column = 0; column < (uint8_t)VERDANA_NB_COLUMNS; column++) {
+            //create a mask showing the nature of the current pixel (foreground or background)
+            line_t pixelMask = (line_t)1U << ((line_t)VERDANA_NB_COLUMNS - column - 1U);
 
-        //get the proper colour to fill
-        pixel_t colour = ((verdana_48ptBitmaps[character][row] & pixelMask) == BACKGROUND ? DARK_CHARCOAL_BIGENDIAN
-                                                                                          : BRIGHT_GRAY_BIGENDIAN);
+            //get the proper colour to fill
+            pixel_t colour = ((verdana_48ptBitmaps[character][row] & pixelMask) == BACKGROUND ? DARK_CHARCOAL_BIGENDIAN
+                                                                                              : BRIGHT_GRAY_BIGENDIAN);
 
-        //fill the pixel
-        buffer[column] = colour;
+            //set the pixel colour in the buffer
+            buffer[(row * VERDANA_NB_COLUMNS) + column] = colour;
+        }
     }
 }
 
