@@ -404,7 +404,7 @@ uint8_t sendDisplayMessage(const displayMessage_t* message) {
 errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t yTop) {
     uint32_t characterSize = 0;
 
-    result = setWindow(xLeft, yTop, xLeft + VERDANA_NB_COLUMNS - 1, yTop + VERDANA_NB_ROWS - 1);
+    result = setWindow(xLeft, yTop, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
     if(isError(result)) {
         state = stateError;
         return pushErrorCode(result, 1, 1);
