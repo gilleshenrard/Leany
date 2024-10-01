@@ -3,8 +3,8 @@
 #include <stdint.h>
 
 enum {
-    VERDANA_NB_ROWS    = 49U,
-    VERDANA_NB_COLUMNS = 39U,
+    VERDANA_NB_ROWS    = 37U,
+    VERDANA_NB_COLUMNS = 30U,
 };
 
 typedef enum {
