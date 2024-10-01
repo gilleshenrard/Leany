@@ -25,8 +25,7 @@ typedef enum {
     VERDANA_9,
     VERDANA_PLUS,
     VERDANA_MIN,
-    VERDANA_COMMA,
-    VERDANA_DEG,
+    VERDANA_DOT,
     NB_CHARACTERS,
 } verdanaCharacter_e;
 
