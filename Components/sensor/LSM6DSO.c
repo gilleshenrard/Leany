@@ -2,7 +2,7 @@
  * @file LSM6DSO.c
  * @brief Implement the LSM6DSO MEMS sensor communication
  * @author Gilles Henrard
- * @date 29/09/2024
+ * @date 03/10/2024
  *
  * @note Additional information can be found in :
  *   - Datasheet : https://www.st.com/resource/en/datasheet/lsm6dso.pdf
@@ -360,7 +360,7 @@ void lsm6dsoCancelZeroing(void) {
  * @retval 1 Error while sending shut down instructions
  */
 errorCode_u lsm6dsoHold(uint8_t toHold) {
-    const registerValue_t configurationArray[2] = {
+    static const registerValue_t configurationArray[2] = {
         {CTRL1_XL, LSM6_POWER_DOWN}, //set accelerometer in power down mode
         { CTRL2_G, LSM6_POWER_DOWN}, //set gyroscope in power down mode
     };
@@ -399,13 +399,13 @@ errorCode_u lsm6dsoHold(uint8_t toHold) {
  */
 //NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void complementaryFilter(const float accelerometer_mG[], const float gyroscope_radps[], float filteredAngles_rad[]) {
-    const float alpha                 = 0.02F;  ///< Proportion applied to the gyro. and accel. in the final result
-    const float dtPeriod_sec          = 0.00240385F;  ///< Time period between two updates (LSM6DSO config. at 416Hz)
-    const float GRAVITATION_MG        = 1000.0F;      ///< Grativation value in mG
-    float       AccelEstimatedX_rad   = 0.0F;         ///< Estimated accelerator angle on the X axis in [rad]
-    float       AccelEstimatedY_rad   = 0.0F;         ///< Estimated accelerator angle on the Y axis in [rad]
-    float       eulerAngleRateX_radps = 0.0F;  ///< Euler angle rate (with reference to Earth) around X axis in rad/s
-    float       eulerAngleRateY_radps = 0.0F;  ///< Euler angle rate (with reference to Earth) around Y axis in rad/s
+    static const float alpha          = 0.02F;  ///< Proportion applied to the gyro. and accel. in the final result
+    static const float dtPeriod_sec   = 0.00240385F;  ///< Time period between two updates (LSM6DSO config. at 416Hz)
+    static const float GRAVITATION_MG = 1000.0F;      ///< Grativation value in mG
+    float              AccelEstimatedX_rad = 0.0F;    ///< Estimated accelerator angle on the X axis in [rad]
+    float              AccelEstimatedY_rad = 0.0F;    ///< Estimated accelerator angle on the Y axis in [rad]
+    float eulerAngleRateX_radps = 0.0F;  ///< Euler angle rate (with reference to Earth) around X axis in rad/s
+    float eulerAngleRateY_radps = 0.0F;  ///< Euler angle rate (with reference to Earth) around Y axis in rad/s
 
     //calculate the accelerometer angle estimations
     AccelEstimatedX_rad = asinf(accelerometer_mG[X_AXIS] / GRAVITATION_MG);
@@ -473,7 +473,7 @@ static errorCode_u stateStartup(void) {
  * @retval 1 Error while writing a register
  */
 static errorCode_u stateConfiguring(void) {
-    const registerValue_t initialisationArray[NB_INIT_REG] = {
+    static const registerValue_t initialisationArray[NB_INIT_REG] = {
         {   CTRL3_C, LSM6_SOFTWARE_RESET | LSM6_INT_ACTIVE_LOW}, //reboot MEMS memory and reset software
         {FIFO_CTRL4,                          FIFO_MODE_BYPASS}, //disable the FIFO (bypass mode)
         { INT1_CTRL,                         INT1_AXL_DATA_RDY}, //enable the accelerometer DATA READY interrupt on INT1
@@ -570,16 +570,16 @@ static errorCode_u stateMeasuring(void) {
     // AN5192 p.113 : temperature sensitivity = 256 [LSB/°C] = 0.00390625 [°C/LSB]
     //                + LSB = 0 @ 25°C
     if(*valueIterator != previousTemp_LSB) {
-        const float TEMPERATURE_SENSITIVITY = 0.00390625F;
-        temperature_degC                    = BASE_TEMPERATURE + ((float)(*valueIterator) * TEMPERATURE_SENSITIVITY);
-        previousTemp_LSB                    = *valueIterator;
+        static const float TEMPERATURE_SENSITIVITY = 0.00390625F;
+        temperature_degC = BASE_TEMPERATURE + ((float)(*valueIterator) * TEMPERATURE_SENSITIVITY);
+        previousTemp_LSB = *valueIterator;
     }
     valueIterator++;
 
     //convert the gyroscope LSB values to rad/s
     //datasheet p.9 : gyroscope sensitivity at 125°/s = 4.375[mdps/LSB]
     //      to rad/s : (sensitivity / 1000[mdps/dps]) * (PI/180°) = 0.000076358155
-    const float GYR_SENSITIVITY_125DPS_RPS = 0.000076358155F;
+    static const float GYR_SENSITIVITY_125DPS_RPS = 0.000076358155F;
     for(axis = 0; axis < (uint8_t)NB_AXIS; axis++) {
         gyroscope_radps[axis] = (float)(*valueIterator) * GYR_SENSITIVITY_125DPS_RPS;
         valueIterator++;
@@ -587,7 +587,7 @@ static errorCode_u stateMeasuring(void) {
 
     //then convert the accelerometer LSB values to mG
     //datasheet p.9 : accelerometer sensitivity at 2G = 0.061 [mG/LSB]
-    const float AXL_SENSITIVITY_2G = 0.061F;
+    static const float AXL_SENSITIVITY_2G = 0.061F;
     for(axis = 0; axis < (uint8_t)NB_AXIS; axis++) {
         accelerometer_mG[axis] = (float)(*valueIterator) * AXL_SENSITIVITY_2G;
         valueIterator++;
