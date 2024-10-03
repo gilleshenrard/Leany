@@ -2,7 +2,7 @@
  * @file ST7735S.c
  * @brief Implement the functioning of the ST7735S TFT screen via SPI and DMA
  * @author Gilles Henrard
- * @date 26/09/2024
+ * @date 03/10/2024
  *
  * @note Datasheet : https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
  */
@@ -18,6 +18,7 @@
 #include "portmacro.h"
 #include "projdefs.h"
 #include "queue.h"
+#include "stdbool.h"
 #include "stm32f103xb.h"
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_hal_def.h"
@@ -69,8 +70,8 @@ static void        taskST7735S(void* argument);
 static inline void setDataCommandGPIO(DCgpio_e function);
 static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint8_t height);
 static inline void turnBacklightON(void);
-static errorCode_u sendCommandNoFinalise(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
-static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters);
+static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters,
+                               uint8_t finalise);
 static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t yTop);
 
 //state machine
@@ -182,14 +183,14 @@ static inline void setDataCommandGPIO(DCgpio_e function) {
 static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint8_t height) {
     //set the data window columns count
     uint8_t columns[4] = {0, Xstart, 0, Xstart + width};
-    result             = sendCommand(CASET, columns, 4);
+    result             = sendCommand(CASET, columns, 4, true);
     if(isError(result)) {
         return pushErrorCode(result, SET_WINDOW, 1);
     }
 
     //set the data window rows count
     uint8_t rows[4] = {0, Ystart, 0, Ystart + height};
-    result          = sendCommand(RASET, rows, 4);
+    result          = sendCommand(RASET, rows, 4, true);
     if(isError(result)) {
         return pushErrorCode(result, SET_WINDOW, 2);
     }
@@ -197,14 +198,22 @@ static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint
     return ERR_SUCCESS;
 }
 
-static errorCode_u sendCommandNoFinalise(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters) {
-    const uint8_t MAX_PARAMETERS = 16U;  ///< Maximum number of parameters a command can have
-
-    //if no handle declared
-    if(!spiHandle) {
-        return (createErrorCode(SEND_CMD, 1, ERR_WARNING));
-    }
-
+/**
+ * @brief Send a command with parameters
+ *
+ * @param regNumber Register number
+ * @param parameters Parameters to write
+ * @param nbParameters Number of parameters to write
+ * @param finalise True if needing to reset CS and disable SPI
+ * @return Success
+ * @retval 1	No SPI handle declared
+ * @retval 2	No parameters array provided with a non-zero number of parameters
+ * @retval 3	Number of parameters above maximum
+ * @retval 4	Timeout while sending the command
+ */
+//NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters,
+                               uint8_t finalise) {
     //if nb of params non-zero and parameters array NULL, error
     if(!parameters && nbParameters) {
         return (createErrorCode(SEND_CMD, 2, ERR_WARNING));
@@ -244,29 +253,14 @@ static errorCode_u sendCommandNoFinalise(ST7735register_e regNumber, const uint8
 
     //if timeout, error
     if(((HAL_GetTick() - SPItick) >= SPI_TIMEOUT_MS)) {
+        LL_SPI_Disable(spiHandle);
         return (createErrorCode(SEND_CMD, 4, ERR_WARNING));
     }
 
+    if(finalise) {
+        LL_SPI_Disable(spiHandle);
+    }
     return (ERR_SUCCESS);
-}
-
-/**
- * @brief Send a command with parameters
- *
- * @param regNumber Register number
- * @param parameters Parameters to write
- * @param nbParameters Number of parameters to write
- * @return Success
- * @retval 1	No SPI handle declared
- * @retval 2	No parameters array provided with a non-zero number of parameters
- * @retval 3	Number of parameters above maximum
- * @retval 4	Timeout while sending the command
- */
-static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters) {
-    result = sendCommandNoFinalise(regNumber, parameters, nbParameters);
-    LL_SPI_Disable(spiHandle);
-
-    return (result);
 }
 
 /**
@@ -287,7 +281,7 @@ static errorCode_u sendData(uint32_t* dataRemaining) {
     }
 
     if(!WriteCommandSent) {
-        sendCommandNoFinalise(RAMWR, NULL, 0);
+        sendCommand(RAMWR, NULL, 0, false);
         WriteCommandSent = 1;
     }
 
@@ -355,7 +349,7 @@ errorCode_u st7735sSetOrientation(orientation_e orientation) {
     }
 
     //send the command to the display
-    result = sendCommand(MADCTL, &orientations[orientation], 1);
+    result = sendCommand(MADCTL, &orientations[orientation], 1, true);
     if(isError(result)) {
         return pushErrorCode(result, ORIENT, 2);
     }
@@ -438,7 +432,7 @@ static errorCode_u stateStartup(void) {
     const uint8_t SLEEPOUT_DELAY_MS = 255U;  ///< Number of milliseconds to wait sleep out
 
     //send the reset command and, if error, exit
-    result = sendCommand(SWRESET, NULL, 0);
+    result = sendCommand(SWRESET, NULL, 0, true);
     if(isError(result)) {
         state = stateError;
         return pushErrorCode(result, STARTUP, 1);
@@ -448,7 +442,7 @@ static errorCode_u stateStartup(void) {
     vTaskDelay(pdMS_TO_TICKS(RESET_DELAY_MS));
 
     //send the reset command and, if error, exit
-    result = sendCommand(SLPOUT, NULL, 0);
+    result = sendCommand(SLPOUT, NULL, 0, true);
     if(isError(result)) {
         state = stateError;
         return pushErrorCode(result, STARTUP, 2);
@@ -472,9 +466,9 @@ static errorCode_u stateStartup(void) {
 static errorCode_u stateConfiguring(void) {
     //execute all configuration commands
     for(uint8_t command = 0; command < (uint8_t)ST7735_NB_COMMANDS; command++) {
-        result =
-            sendCommand(st7735configurationScript[command].registerNumber,
-                        st7735configurationScript[command].parameters, st7735configurationScript[command].nbParameters);
+        result = sendCommand(st7735configurationScript[command].registerNumber,
+                             st7735configurationScript[command].parameters,
+                             st7735configurationScript[command].nbParameters, true);
         if(isError(result)) {
             state = stateError;
             return pushErrorCode(result, CONFIG, 1);
