@@ -214,6 +214,8 @@ static errorCode_u setWindow(uint8_t Xstart, uint8_t Ystart, uint8_t width, uint
 //NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 static errorCode_u sendCommand(ST7735register_e regNumber, const uint8_t parameters[], uint8_t nbParameters,
                                uint8_t finalise) {
+    static const uint8_t MAX_PARAMETERS = 16U;
+
     //if nb of params non-zero and parameters array NULL, error
     if(!parameters && nbParameters) {
         return (createErrorCode(SEND_CMD, 2, ERR_WARNING));
@@ -428,8 +430,8 @@ errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t 
  * @retval 2 Error while transmitting the sleep out command
  */
 static errorCode_u stateStartup(void) {
-    const uint8_t RESET_DELAY_MS    = 150U;  ///< Number of milliseconds to wait after reset
-    const uint8_t SLEEPOUT_DELAY_MS = 255U;  ///< Number of milliseconds to wait sleep out
+    static const uint8_t RESET_DELAY_MS    = 150U;  ///< Number of milliseconds to wait after reset
+    static const uint8_t SLEEPOUT_DELAY_MS = 255U;  ///< Number of milliseconds to wait sleep out
 
     //send the reset command and, if error, exit
     result = sendCommand(SWRESET, NULL, 0, true);
@@ -522,8 +524,8 @@ static errorCode_u stateFillingBackground(void) {
  * @return Success
  */
 static errorCode_u stateIdle(void) {
-    const uint8_t    REFRESH_DELAY_MS = 30U;
-    displayMessage_t message          = {0};
+    static const uint8_t REFRESH_DELAY_MS = 30U;
+    displayMessage_t     message          = {0};
 
     vTaskDelayUntil(&previousTick, pdMS_TO_TICKS(REFRESH_DELAY_MS));
 
