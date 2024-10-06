@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "FreeRTOS.h"
+#include "LSM6DSO.h"
 #include "ST7735_initialisation.h"
 #include "ST7735_registers.h"
 #include "errorstack.h"
@@ -28,7 +29,7 @@
 #include "task.h"
 
 enum {
-    STACK_SIZE        = 128U,  ///< Amount of words in the task stack
+    STACK_SIZE        = 160U,  ///< Amount of words in the task stack
     TASK_LOW_PRIORITY = 8U,    ///< FreeRTOS number for a low priority task
     DISPLAY_WIDTH     = 160U,  ///< Number of pixels in width
     DISPLAY_HEIGHT    = 128U,  ///< Number of pixels in height
@@ -397,7 +398,7 @@ uint8_t sendDisplayMessage(const displayMessage_t* message) {
     return (xQueueSendToFront(messageStack, message, MSG_TIMEOUT_MS) != pdTRUE);
 }
 
-errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t yTop) {
+static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t yTop) {
     uint32_t characterSize = 0;
 
     result = setWindow(xLeft, yTop, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
@@ -415,6 +416,23 @@ errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t 
         state = stateError;
         return pushErrorCode(result, 1, 1);
     }
+
+    return ERR_SUCCESS;
+}
+
+static errorCode_u printMeasurements(axis_e axis) {
+    int16_t measurement = getAngleDegreesTenths(axis);
+    uint8_t yTop        = (axis == X_AXIS ? 0 : 50U);
+
+    if(measurement >= 0) {
+        printCharacter(VERDANA_PLUS, 0, yTop);
+    } else {
+        measurement = (int16_t)-measurement;
+        printCharacter(VERDANA_MIN, 0, yTop);
+    }
+    printCharacter((verdanaCharacter_e)(measurement / 100), VERDANA_NB_COLUMNS, yTop);
+    printCharacter((verdanaCharacter_e)((measurement / 10) % 10), (VERDANA_NB_COLUMNS * 2), yTop);
+    printCharacter((verdanaCharacter_e)(measurement % 10), (VERDANA_NB_COLUMNS * 4), yTop);
 
     return ERR_SUCCESS;
 }
@@ -525,32 +543,28 @@ static errorCode_u stateFillingBackground(void) {
  */
 static errorCode_u stateIdle(void) {
     static const uint8_t REFRESH_DELAY_MS = 30U;
-    displayMessage_t     message          = {0};
 
     vTaskDelayUntil(&previousTick, pdMS_TO_TICKS(REFRESH_DELAY_MS));
 
-    while(xQueueReceive(messageStack, &message, pdMS_TO_TICKS(MSG_TIMEOUT_MS)) == pdTRUE) {
-        switch(message.ID) {
-            case MSG_ROLL_VALUE:
-                if(message.value >= 0) {
-                    printCharacter(VERDANA_PLUS, 0, 0);
-                } else {
-                    message.value = (int16_t)-message.value;
-                    printCharacter(VERDANA_MIN, 0, 0);
-                }
-                printCharacter((verdanaCharacter_e)(message.value / 100), VERDANA_NB_COLUMNS, 0);
-                printCharacter((verdanaCharacter_e)((message.value / 10) % 10), (VERDANA_NB_COLUMNS * 2), 0);
-                printCharacter((verdanaCharacter_e)(message.value % 10), (VERDANA_NB_COLUMNS * 4), 0);
-                break;
-
-            case MSG_PITCH_VALUE:
-            case MSG_HOLD:
-            case MSG_ZERO:
-            case NB_MESSAGES:
-            default:
-                break;
-        }
+    if(lsm6dsoHasChanged(X_AXIS)) {
+        printMeasurements(X_AXIS);
     }
+
+    if(lsm6dsoHasChanged(Y_AXIS)) {
+        printMeasurements(Y_AXIS);
+    }
+
+    // displayMessage_t message = {0};
+    // while(xQueueReceive(messageStack, &message, pdMS_TO_TICKS(MSG_TIMEOUT_MS)) == pdTRUE) {
+    //     switch(message.ID) {
+    //         case MSG_HOLD:
+    //         case MSG_ZERO:
+    //         case MSG_PWROFF:
+    //         case NB_MESSAGES:
+    //         default:
+    //             break;
+    //     }
+    // }
 
     return ERR_SUCCESS;
 }

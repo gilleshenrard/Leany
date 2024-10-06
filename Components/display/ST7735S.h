@@ -11,10 +11,9 @@ enum {
 };
 
 typedef enum {
-    MSG_ROLL_VALUE = 0,
-    MSG_PITCH_VALUE,
-    MSG_HOLD,
+    MSG_HOLD = 0,
     MSG_ZERO,
+    MSG_PWROFF,
     NB_MESSAGES
 } messageID_e;
 

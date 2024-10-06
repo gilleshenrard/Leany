@@ -78,6 +78,7 @@ add_library(st7735s
 	display/icons.c
 	display/ST7735_initialisation.c)
 target_include_directories(st7735s PUBLIC display)
+target_include_directories(st7735s PUBLIC sensor/)
 target_link_libraries(st7735s PRIVATE sysUtils)
 
 #create the LSM6DSO library, taking care of the MEMS sensor
