@@ -2,7 +2,7 @@
  * @file ST7735S.c
  * @brief Implement the functioning of the ST7735S TFT screen via SPI and DMA
  * @author Gilles Henrard
- * @date 03/10/2024
+ * @date 06/10/2024
  *
  * @note Datasheet : https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
  */
@@ -46,6 +46,7 @@ typedef enum {
     SEND_CMD = 0,  ///< sendCommand()
     SET_WINDOW,    ///< setWindow()
     SEND_DATA,     ///< sendData()
+    PRT_CHAR,      ///< printCharacter()
     ORIENT,        ///< st7735sSetOrientation()
     STARTUP,       ///< stateStartup()
     CONFIG,        ///< stateConfiguring()
@@ -398,13 +399,23 @@ uint8_t sendDisplayMessage(const displayMessage_t* message) {
     return (xQueueSendToFront(messageStack, message, MSG_TIMEOUT_MS) != pdTRUE);
 }
 
+/**
+ * @brief Print a Verdana character on screen
+ * 
+ * @param character Character to print
+ * @param xLeft Left-most coordinate of the character
+ * @param yTop Top-most coordinate of the character
+ * @return Success
+ * @retval 1 Error while setting the window
+ * @retval 2 Error while sending the pixel data to the screen
+ */
 static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, uint8_t yTop) {
     uint32_t characterSize = 0;
 
     result = setWindow(xLeft, yTop, VERDANA_NB_COLUMNS - 1, VERDANA_NB_ROWS - 1);
     if(isError(result)) {
         state = stateError;
-        return pushErrorCode(result, 1, 1);
+        return pushErrorCode(result, PRT_CHAR, 1);
     }
 
     //fill the frame buffer with background pixels
@@ -414,12 +425,18 @@ static errorCode_u printCharacter(verdanaCharacter_e character, uint8_t xLeft, u
     result        = sendData(&characterSize);
     if(isError(result)) {
         state = stateError;
-        return pushErrorCode(result, 1, 1);
+        return pushErrorCode(result, PRT_CHAR, 2);
     }
 
     return ERR_SUCCESS;
 }
 
+/**
+ * @brief Print measurement values in 0.1°
+ * 
+ * @param axis Axis of which to print the measurements
+ * @return Success
+ */
 static errorCode_u printMeasurements(axis_e axis) {
     int16_t measurement = getAngleDegreesTenths(axis);
     uint8_t yTop        = (axis == X_AXIS ? 0 : 50U);
