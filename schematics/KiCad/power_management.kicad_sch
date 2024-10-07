@@ -6,7 +6,7 @@
 	(paper "A4")
 	(title_block
 		(title "Leany power management")
-		(date "2024-09-06")
+		(date "2024-10-07")
 		(comment 1 "MIT License")
 		(comment 2 "Copyright (c) 2023 Gilles Henrard")
 	)
@@ -6203,7 +6203,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF"
+		(property "Value" "22u"
 			(at 140.97 87.376 90)
 			(effects
 				(font
@@ -6212,7 +6212,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 143.51 85.09 0)
 			(effects
 				(font
@@ -6576,7 +6576,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "100nF"
+		(property "Value" "100n"
 			(at 150.114 88.138 90)
 			(effects
 				(font
@@ -6585,7 +6585,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 147.32 85.09 0)
 			(effects
 				(font
@@ -7072,7 +7072,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 240.03 35.56 0)
 			(effects
 				(font
@@ -7411,7 +7411,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 273.05 35.56 0)
 			(effects
 				(font
@@ -7540,7 +7540,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF"
+		(property "Value" "22u"
 			(at 59.69 36.83 0)
 			(effects
 				(font
@@ -7549,7 +7549,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 64.77 33.02 0)
 			(effects
 				(font
@@ -7609,7 +7609,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "1uF"
+		(property "Value" "1u"
 			(at 74.93 72.39 90)
 			(effects
 				(font
@@ -7618,7 +7618,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 76.2 71.12 0)
 			(effects
 				(font
@@ -8297,7 +8297,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 165.1 63.5 0)
 			(effects
 				(font
@@ -8366,7 +8366,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "digikey-footprints:SOT-23-3"
+		(property "Footprint" ""
 			(at 195.58 78.74 0)
 			(effects
 				(font
@@ -8521,7 +8521,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "100nF"
+		(property "Value" "100n"
 			(at 39.37 144.78 90)
 			(effects
 				(font
@@ -8530,7 +8530,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 40.64 143.51 0)
 			(effects
 				(font
@@ -10317,7 +10317,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 245.11 35.56 0)
 			(effects
 				(font
@@ -10878,7 +10878,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 267.97 35.56 0)
 			(effects
 				(font
@@ -11074,8 +11074,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "100nF"
-			(at 131.572 58.674 90)
+		(property "Value" "100n"
+			(at 130.556 58.674 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11083,7 +11083,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 124.46 57.15 0)
 			(effects
 				(font
