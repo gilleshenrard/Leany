@@ -146,7 +146,7 @@ bool updateMahonyFilter(MahonyContext* context, const IMUsample* sample) {
     estimateOrientation(context, body_estimates);
 
     //Abort update if validation is enabled and a strong linear motion is detected
-    if (context->align_check_enabled && !alignmentValid(normalised_accelerometer, body_estimates)) {
+    if (context->alignment_check_enabled && !alignmentValid(normalised_accelerometer, body_estimates)) {
         return false;
     }
 
