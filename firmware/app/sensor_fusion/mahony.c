@@ -1,12 +1,11 @@
-/*
+/**
  * SPDX-FileCopyrightText: 2025 Gilles Henrard <contact@gilleshenrard.com>
  *
  * SPDX-License-Identifier: MIT
- */
-
-/**
+ *
  * @file mahony.c
  * @brief Mahony filter implementation for 6DoF attitude estimation using gyroscope and accelerometer.
+ * @author Gilles Henrard
  *
  * @details
  * This file implements a simplified Mahony filter to estimate orientation using gyroscope and
@@ -42,22 +41,19 @@
  * ```
  *
  * ## References
- * - Mahony, R., Hamel, T., & Pflimlin, J.-M. (2008). Nonlinear Complementary Filters on the Special
- *   Orthogonal Group. *IEEE Transactions on Automatic Control*, 53(5), 1203–1218.
- *   DOI: [10.1109/TAC.2008.923738](https://doi.org/10.1109/TAC.2008.923738)
+ * - R. Mahony, T. Hamel and J. -M. Pflimlin, "Nonlinear Complementary Filters on the Special Orthogonal Group,"
  *
- * @author Gilles Henrard
+ *   IEEE Transactions on Automatic Control, vol. 53, no. 5, pp. 1203-1218, June 2008
+ *
+ *   DOI: [10.1109/TAC.2008.923738](https://ieeexplore.ieee.org/document/4608934)
  */
 #include "mahony.h"
 
 #include <math.h>
 #include <stdint.h>
 
-#ifndef DOXYGEN_SHOULD_SKIP_THIS
+// macros
 #define FORCE_INLINE_SILENT __attribute((always_inline))  ///< Macro used to workaround Doxygen issues with __attribute
-#else
-#define FORCE_INLINE_SILENT
-#endif /* DOXYGEN_SHOULD_SKIP_THIS */
 
 // utility functions
 static inline FORCE_INLINE_SILENT float half(float number);
@@ -176,7 +172,7 @@ bool updateMahonyFilter(MahonyContext* context, const IMUsample* sample) {
 
 /**
  * Get the current angle in [rad] along an axis
- * @note Yaw angle (around the Z axis) will always return 0, due to the absence of a magnetometer
+ * @note Yaw angle (around the Z axis) will always return 0, due to the absence of a magnetometer implementation
  *
  * @param context Current Mahony filter context
  * @param axis    Axis along which getting the angle
@@ -264,7 +260,7 @@ static inline FORCE_INLINE_SILENT float squared(const float number) { return num
 /**
  * Normalise an array of vectors
  *
- * @param array Array to normalise
+ * @param[out] array Array to normalise
  * @return Norm value
  */
 static inline FORCE_INLINE_SILENT float normaliseArray(float array[kNBaxis]) {
@@ -282,7 +278,7 @@ static inline FORCE_INLINE_SILENT float normaliseArray(float array[kNBaxis]) {
 /**
  * Normalise a quaternion
  *
- * @param quaternion Quaternion to normalise
+ * @param[out] quaternion Quaternion to normalise
  * @return Norm value
  */
 static inline FORCE_INLINE_SILENT float normaliseQuaternion(Quaternion* quaternion) {
@@ -355,7 +351,7 @@ static bool alignmentValid(const float accelerometer_normalised[kNBaxis], const 
  * Normalise accelerometer vectors to unit length
  * @details This avoids drifting
  *
- * @param context Filter context
+ * @param[out] context Filter context
  * @param sample Last measured IMU sample
  * @param[out] normalised_accelerometer Array of normalised acceleration values in [G] (9.81 m/s²)
  * @return true Norm is valid
@@ -424,7 +420,7 @@ static void integrateGyroQuaternion(Quaternion* current_attitude, const float co
  * Check if a norm provided is within a valid range
  * @details An invalid norm increments a counter which, if too high, will trigger a filter reset
  *
- * @param context Filter context
+ * @param[out] context Filter context
  * @param norm Norm to validate
  * @param bad_norm_counter Counter used to see if the filter should be reset
  * @retval true Norm valid
