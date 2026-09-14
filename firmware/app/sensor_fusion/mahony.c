@@ -63,7 +63,7 @@
 static inline FORCE_INLINE_SILENT float half(float number);
 static inline FORCE_INLINE_SILENT float twice(float number);
 static inline FORCE_INLINE_SILENT float squared(float number);
-static inline FORCE_INLINE_SILENT float normaliseArray(float array[3]);
+static inline FORCE_INLINE_SILENT float normaliseArray(float array[kNBaxis]);
 static inline FORCE_INLINE_SILENT float normaliseQuaternion(Quaternion* quaternion);
 static inline FORCE_INLINE_SILENT float clamp(float value, float max_absolute_value);
 static inline FORCE_INLINE_SILENT float computeDTseconds(const TimeDelta* delta);
@@ -267,7 +267,7 @@ static inline FORCE_INLINE_SILENT float squared(const float number) { return num
  * @param array Array to normalise
  * @return Norm value
  */
-static inline FORCE_INLINE_SILENT float normaliseArray(float array[3]) {
+static inline FORCE_INLINE_SILENT float normaliseArray(float array[kNBaxis]) {
     const float norm = sqrtf(squared(array[0U]) + squared(array[1U]) + squared(array[2U]));
     if (norm < kCloseToZero) {
         return norm;
@@ -286,7 +286,7 @@ static inline FORCE_INLINE_SILENT float normaliseArray(float array[3]) {
  * @return Norm value
  */
 static inline FORCE_INLINE_SILENT float normaliseQuaternion(Quaternion* quaternion) {
-    float norm =
+    const float norm =
         sqrtf(squared(quaternion->q0) + squared(quaternion->q1) + squared(quaternion->q2) + squared(quaternion->q3));
     if (norm < kCloseToZero) {
         return norm;
@@ -431,14 +431,17 @@ static void integrateGyroQuaternion(Quaternion* current_attitude, const float co
  * @retval false Norm invalid
  */
 static bool validateNorm(MahonyContext* context, const float norm, uint8_t* bad_norm_counter) {
-    if ((norm < (1.0F - kMaxNormEpsilon)) || (norm > (1.0F + kMaxNormEpsilon))) {
-        if (++(*bad_norm_counter) >= kMaxBadCounts) {
-            resetMahonyFilter(context);
-        }
-        return false;
+    if ((norm > (1.0F - kMaxNormEpsilon)) && (norm < (1.0F + kMaxNormEpsilon))) {
+        *bad_norm_counter = 0;
+        return true;
     }
-    *bad_norm_counter = 0;
-    return true;
+
+    (*bad_norm_counter)++;
+    if (*bad_norm_counter >= kMaxBadCounts) {
+        resetMahonyFilter(context);
+    }
+
+    return false;
 }
 
 /**
