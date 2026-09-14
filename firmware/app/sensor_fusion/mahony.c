@@ -64,8 +64,6 @@ static inline FORCE_INLINE_SILENT float normaliseQuaternion(Quaternion* quaterni
 static inline FORCE_INLINE_SILENT float clamp(float value, float max_absolute_value);
 static inline FORCE_INLINE_SILENT float computeDTseconds(const TimeDelta* delta);
 static inline FORCE_INLINE_SILENT uint8_t isDTvalid(float delta_seconds);
-static bool normaliseAccelerometer(MahonyContext* context, const IMUsample* sample,
-                                   float normalised_accelerometer[kNBaxis]);
 static bool alignmentValid(const float accelerometer_normalised[kNBaxis], const float estimates_normalised[kNBaxis]);
 static void computeGravityError(float errors[kNBaxis], const float accelerometer_g[kNBaxis],
                                 const float body_estimates[kNBaxis]);
@@ -132,8 +130,11 @@ bool updateMahonyFilter(MahonyContext* context, const IMUsample* sample) {
     }
 
     //normalise accelerometer vectors to unit length, to avoid drift
-    float normalised_accelerometer[kNBaxis];
-    if (!normaliseAccelerometer(context, sample, normalised_accelerometer)) {
+    float normalised_accelerometer[kNBaxis] = {[kXaxis] = sample->accelerometer_g[kXaxis],
+                                               [kYaxis] = sample->accelerometer_g[kYaxis],
+                                               [kZaxis] = sample->accelerometer_g[kZaxis]};
+    const float acceleration_norm = normaliseArray(normalised_accelerometer);
+    if (!validateNorm(context, acceleration_norm, &context->bad_acceleration_count)) {
         return false;
     }
 
@@ -345,27 +346,6 @@ static bool alignmentValid(const float accelerometer_normalised[kNBaxis], const 
                               (accelerometer_normalised[kZaxis] * estimates_normalised[kZaxis]);
 
     return (bool)((dot_product >= kMinAlignmentCosine) && (dot_product <= kMaxAlignmentCosine));
-}
-
-/**
- * Normalise accelerometer vectors to unit length
- * @details This avoids drifting
- *
- * @param[out] context Filter context
- * @param sample Last measured IMU sample
- * @param[out] normalised_accelerometer Array of normalised acceleration values in [G] (9.81 m/s²)
- * @return true Norm is valid
- * @return false Norm is invalid
- */
-static bool normaliseAccelerometer(MahonyContext* context, const IMUsample* sample,
-                                   float normalised_accelerometer[kNBaxis]) {
-    //normalise accelerometer vectors to unit length, to avoid drift
-    normalised_accelerometer[kXaxis] = sample->accelerometer_g[kXaxis];
-    normalised_accelerometer[kYaxis] = sample->accelerometer_g[kYaxis];
-    normalised_accelerometer[kZaxis] = sample->accelerometer_g[kZaxis];
-
-    const float acceleration_norm = normaliseArray(normalised_accelerometer);
-    return validateNorm(context, acceleration_norm, &context->bad_acceleration_count);
 }
 
 /**
